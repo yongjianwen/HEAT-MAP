@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="app_bar_shadow_elevation">0.5dp</dimen>
+
+    <dimen name="big_button_inner_padding">12dp</dimen>
+    <dimen name="big_button_separation">4dp</dimen>
+
+    <dimen name="card_outer_padding">4dp</dimen>
+    <dimen name="card_inner_vertical_padding">5dp</dimen>
+
+    <dimen name="card_small_elevation">2dp</dimen>
+    <dimen name="card_small_corner_radius">0dp</dimen>
+    <dimen name="card_small_content_padding">14dp</dimen>
+
+    <dimen name="card_medium_elevation">8dp</dimen>
+    <dimen name="card_medium_corner_radius">16dp</dimen>
+    <dimen name="card_medium_content_padding">18dp</dimen>
+
+    <dimen name="card_high_elevation">0dp</dimen>
+    <dimen name="card_high_corner_radius">32dp</dimen>
+    <dimen name="card_high_content_padding">0dp</dimen>
+
+    <dimen name="dialog_outer_padding">24dp</dimen>
+    <dimen name="dialog_max_height">500dp</dimen>
+
+    <dimen name="chip_separation">5dp</dimen>
+    <dimen name="chip_corner_radius">12dp</dimen>
+    <dimen name="chip_horizontal_padding">10dp</dimen>
+    <dimen name="chip_vertical_padding">6dp</dimen>
+</resources>
