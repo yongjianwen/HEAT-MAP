@@ -6,11 +6,11 @@ plugins {
 }
 
 android {
-    namespace = "com.example.heatmap"
+    namespace = "yong.jianwen.heatmap"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.heatmap"
+        applicationId = "yong.jianwen.heatmap"
         minSdk = 29
         targetSdk = 34
         versionCode = 1
