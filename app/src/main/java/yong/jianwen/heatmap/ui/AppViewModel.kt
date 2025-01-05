@@ -1,13 +1,18 @@
 package yong.jianwen.heatmap.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import yong.jianwen.heatmap.CurrentPage
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import yong.jianwen.heatmap.GPXGenerator
 import yong.jianwen.heatmap.HeatMapApplication
 import yong.jianwen.heatmap.data.Selectable
@@ -17,7 +22,6 @@ import yong.jianwen.heatmap.data.entity.Track
 import yong.jianwen.heatmap.data.entity.TrackSegment
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
-import yong.jianwen.heatmap.data.helper.AdditionalTripInfo
 import yong.jianwen.heatmap.data.helper.DebugUtilis.d
 import yong.jianwen.heatmap.data.helper.NewTripInfo
 import yong.jianwen.heatmap.data.repository.CarRepository
@@ -30,14 +34,6 @@ import yong.jianwen.heatmap.data.repository.TripWithTracksRepository
 import yong.jianwen.heatmap.generateTrackName
 import yong.jianwen.heatmap.generateTripName
 import yong.jianwen.heatmap.getCurrentDateTime
-import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 
 class AppViewModel(
     private val carRepository: CarRepository,
@@ -49,39 +45,28 @@ class AppViewModel(
     private val dataStoreRepository: DataStoreRepository
 ) : ViewModel() {
 
-    private val _appUiState: MutableStateFlow<AppUiState> = MutableStateFlow(AppUiState())
-    val appUiState: StateFlow<AppUiState> = _appUiState.asStateFlow()
-
-//    val appUiState: StateFlow<AppUiState> =
-//        combine(
-//            tripRepository.getAll(),
-//            carRepository.getAll()
-//        ) { trips, cars -> AppUiState(cars = cars, trips = trips) }
-//            .stateIn(
-//                scope = viewModelScope,
-//                started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
-//                initialValue = AppUiState()
-//            )
+    private val _uiState: MutableStateFlow<UiState> = MutableStateFlow(UiState())
+    val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
     init {
         viewModelScope.launch {
-            tripRepository.getAll().collect { trips ->
-                _appUiState.update { it.copy(trips = trips) }
+            tripWithTracksRepository.getAll().collect { trips ->
+                _uiState.update { it.copy(allTripsWithTracks = trips) }
             }
         }
         viewModelScope.launch {
             carRepository.getAll().collect { cars ->
-                _appUiState.update { it.copy(cars = cars) }
+                _uiState.update { it.copy(cars = cars) }
             }
         }
         viewModelScope.launch {
             dataStoreRepository.carId.collect { id ->
-                _appUiState.update { it.copy(carSelected = carRepository.getById(id)) }
+                _uiState.update { it.copy(carSelected = carRepository.getById(id)) }
             }
         }
         viewModelScope.launch {
             dataStoreRepository.modeId.collect { id ->
-                _appUiState.update {
+                _uiState.update {
                     it.copy(
                         modeSelected = TripMode.entries.find { tripType -> tripType.id == id }
                     )
@@ -90,115 +75,37 @@ class AppViewModel(
         }
         viewModelScope.launch {
             dataStoreRepository.tripId.collect { id ->
-                _appUiState.update { it.copy(newTripId = id) }
+                _uiState.update { it.copy(newTripId = id) }
             }
         }
         viewModelScope.launch {
             dataStoreRepository.trackId.collect { id ->
-                _appUiState.update { it.copy(newTrackId = id) }
+                _uiState.update { it.copy(newTrackId = id) }
             }
         }
         viewModelScope.launch {
             dataStoreRepository.trackSegmentId.collect { id ->
-                _appUiState.update { it.copy(newTrackSegmentId = id) }
+                _uiState.update { it.copy(newTrackSegmentId = id) }
             }
         }
         viewModelScope.launch {
             dataStoreRepository.isPaused.collect { flag ->
-                _appUiState.update { it.copy(isPaused = flag) }
+                _uiState.update { it.copy(isPaused = flag) }
             }
         }
         viewModelScope.launch {
-            tripRepository.getAdditionalTripInfo().collect { chips ->
-                _appUiState.update { it.copy(chips = chips) }
-            }
-        }
-        viewModelScope.launch {
-            tripWithTracksRepository.getAll().collect {trips ->
-                _appUiState.update { it.copy(allTrips = trips) }
+            tripRepository.getCarsAndModesForEachTrip().collect { carsAndModesForTrips ->
+                _uiState.update { it.copy(carsAndModesForEachTrip = carsAndModesForTrips) }
             }
         }
     }
 
-    fun editTrack(flag: Boolean, selectable: Selectable? = null, trackId: Long = -1) {
-        viewModelScope.launch {
-            _appUiState.update {
-                it.copy(
-                    isUpdatingCarOrMode = flag,
-                    updatingCarOrModeSelected = selectable,
-                    updatingTrackId = trackId
-                )
-            }
-        }
-    }
-
-    fun saveCar(car: Car) {
-        viewModelScope.launch {
-            dataStoreRepository.saveCarIdPreference(car.id)
-            _appUiState.update { it.copy(carSelected = car) }
-        }
-    }
-
-    fun clearCar() {
-        viewModelScope.launch {
-            dataStoreRepository.saveCarIdPreference(-1)
-            _appUiState.update { it.copy(carSelected = null) }
-        }
-    }
-
-    fun updateCar(car: Car) {
-        viewModelScope.launch {
-            carRepository.update(car)
-        }
-    }
-
-    fun saveMode(mode: TripMode) {
-        viewModelScope.launch {
-            dataStoreRepository.saveModeIdPreference(mode.id)
-            _appUiState.update { it.copy(modeSelected = mode) }
-        }
-    }
-
-    fun addNewCar(car: Car) {
-        viewModelScope.launch {
-            carRepository.insert(car)
-        }
-    }
-
-    suspend fun deleteCar(id: Int): Boolean {
-        /*viewModelScope.launch {
-            try {
-                carRepository.delete(id)
-                if (appUiState.value.carSelected != null && appUiState.value.carSelected!!.id == id) {
-                    clearCar()
-                }
-            } catch (e: Exception) {
-                Log.d("TEST", "Cannot delete car")
-                showAlertDialog()
-            }
-        }*/
-
-        val res = viewModelScope.async {
-            try {
-                carRepository.delete(id)
-                if (appUiState.value.carSelected != null && appUiState.value.carSelected!!.id == id) {
-                    clearCar()
-                }
-                true
-            } catch (e: Exception) {
-                Log.d("TEST", "Cannot delete car")
-//                showAlertDialog()
-                false
-            }
-        }
-        return res.await()
-    }
-
-    fun startNewTrip(newTripInfo: NewTripInfo) {
+    //region Start, pause, continue, end and delete Trip
+    fun startTrip(newTripInfo: NewTripInfo) {
         val now = getCurrentDateTime()
 
         viewModelScope.launch {
-            _appUiState.update {
+            _uiState.update {
                 it.copy(
                     newTripId = tripRepository.insert(
                         Trip(
@@ -211,15 +118,15 @@ class AppViewModel(
                     isPaused = false,
                 )
             }
-            dataStoreRepository.saveTripIdPreference(appUiState.value.newTripId)
+            dataStoreRepository.saveTripIdPreference(uiState.value.newTripId)
             dataStoreRepository.saveIsPausedPreference(false)
 
-            _appUiState.update {
+            _uiState.update {
                 it.copy(
                     newTrackId = trackRepository.insert(
                         Track(
                             id = 0,
-                            tripId = appUiState.value.newTripId,
+                            tripId = uiState.value.newTripId,
                             type = newTripInfo.tripMode.getDisplayName(),
                             name = generateTrackName(
                                 newTripInfo.trackName,
@@ -229,26 +136,95 @@ class AppViewModel(
                             number = 1,
                             start = now,
                             end = "",
-                            carId = appUiState.value.carSelected!!.id
+                            carId = uiState.value.carSelected!!.id
                         )
                     )
                 )
             }
-            dataStoreRepository.saveTrackIdPreference(appUiState.value.newTrackId)
+            dataStoreRepository.saveTrackIdPreference(uiState.value.newTrackId)
 
-            _appUiState.update {
+            _uiState.update {
                 it.copy(
                     newTrackSegmentId = trackSegmentRepository.insert(
                         TrackSegment(
                             id = 0,
-                            trackId = appUiState.value.newTrackId,
+                            trackId = uiState.value.newTrackId,
                             number = 1
                         )
                     )
                 )
             }
-            dataStoreRepository.saveTrackSegmentIdPreference(appUiState.value.newTrackSegmentId)
+            dataStoreRepository.saveTrackSegmentIdPreference(uiState.value.newTrackSegmentId)
         }
+    }
+
+    fun pauseTrip() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isPaused = true) }
+            dataStoreRepository.saveIsPausedPreference(true)
+            trackRepository.updateTrackEndById(uiState.value.newTrackId, getCurrentDateTime())
+        }
+    }
+
+    fun continueTrip(tripInfo: NewTripInfo) {
+        val start = getCurrentDateTime()
+
+        viewModelScope.launch {
+            val trackNumber = trackRepository.getLatestTrackNumberByTripId(tripInfo.tripId)
+            val trackId = trackRepository.insert(
+                Track(
+                    id = 0,
+                    tripId = tripInfo.tripId,
+                    type = tripInfo.tripMode.getDisplayName(),
+                    name = generateTrackName(
+                        tripInfo.trackName,
+                        tripInfo.tripMode
+                    ),
+                    number = trackNumber + 1,
+                    start = start,
+                    end = "",
+                    carId = uiState.value.carSelected!!.id
+                )
+            )
+            _uiState.update {
+                it.copy(
+                    isPaused = false,
+                    newTrackId = trackId
+                )
+            }
+            dataStoreRepository.saveTripIdPreference(tripInfo.tripId)
+            dataStoreRepository.saveTrackIdPreference(uiState.value.newTrackId)
+            dataStoreRepository.saveIsPausedPreference(false)
+
+            _uiState.update {
+                it.copy(
+                    newTrackSegmentId = trackSegmentRepository.insert(
+                        TrackSegment(
+                            id = 0,
+                            trackId = trackId,  // cannot use appUiState.value.newTrackId
+                            number = 1
+                        )
+                    )
+                )
+            }
+            dataStoreRepository.saveTrackSegmentIdPreference(uiState.value.newTrackSegmentId)
+        }
+    }
+
+    fun endTrip() {
+        pauseTrip()
+        viewModelScope.launch {
+            tripRepository.updateTripEndById(uiState.value.newTripId, getCurrentDateTime())
+            _uiState.update {
+                it.copy(
+                    newTripId = -1,
+                    newTrackId = -1,
+                    newTrackSegmentId = -1,
+                    isPaused = false
+                )
+            }
+        }
+        resetPreferences()
     }
 
     fun deleteTrip(id: Long) {
@@ -265,7 +241,85 @@ class AppViewModel(
             tripRepository.delete(id)
         }
     }
+    //endregion
 
+    //region Create, update and delete Car
+    fun createCar(car: Car) {
+        viewModelScope.launch {
+            carRepository.insert(car)
+        }
+    }
+
+    fun updateCar(car: Car) {
+        viewModelScope.launch {
+            carRepository.update(car)
+        }
+    }
+
+    suspend fun deleteCar(id: Int): Boolean {
+        val res = viewModelScope.async {
+            try {
+                carRepository.delete(id)
+                if (uiState.value.carSelected != null && uiState.value.carSelected!!.id == id) {
+                    clearCarSelected()
+                }
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+        return res.await()
+    }
+    //endregion
+
+    //region Save, clear and reset preferences
+    fun saveCarSelected(car: Car) {
+        viewModelScope.launch {
+            dataStoreRepository.saveCarIdPreference(car.id)
+            _uiState.update { it.copy(carSelected = car) }
+        }
+    }
+
+    private fun clearCarSelected() {
+        viewModelScope.launch {
+            dataStoreRepository.saveCarIdPreference(-1)
+            _uiState.update { it.copy(carSelected = null) }
+        }
+    }
+
+    fun saveMode(mode: TripMode) {
+        viewModelScope.launch {
+            dataStoreRepository.saveModeIdPreference(mode.id)
+            _uiState.update { it.copy(modeSelected = mode) }
+        }
+    }
+
+    private fun resetPreferences() {
+        viewModelScope.launch {
+            dataStoreRepository.resetPreferences()
+        }
+    }
+    //endregion
+
+    //region Entering and exiting TripDetailScreen
+    fun getTripWithTracksById(tripId: Long): Flow<TripWithTracks?> {
+        return tripWithTracksRepository.getById(tripId)
+    }
+
+    fun editTrack(flag: Boolean, selectable: Selectable? = null, trackId: Long = -1) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isUpdatingCarOrMode = flag,
+                    updatingCarOrModeSelected = selectable,
+                    updatingTrackId = trackId
+                )
+            }
+        }
+    }
+    //endregion
+
+    //region Update fields in TripDetailScreen
     fun updateTripNameById(id: Long, tripName: String) {
         viewModelScope.launch {
             tripRepository.updateTripNameById(id, tripName)
@@ -278,163 +332,75 @@ class AppViewModel(
         }
     }
 
-    fun updateTrackCarIdById(id: Long, carId: Int) {
-        viewModelScope.launch {
-            trackRepository.updateTrackCarIdById(id, carId)
-        }
-    }
-
     fun updateTrackTypeById(id: Long, tripMode: TripMode) {
         viewModelScope.launch {
             trackRepository.updateTrackTypeById(id, tripMode.getDisplayName())
         }
     }
 
-    private fun resetPreferences() {
+    fun updateTrackCarIdById(id: Long, carId: Int) {
         viewModelScope.launch {
-            dataStoreRepository.resetPreferences()
+            trackRepository.updateTrackCarIdById(id, carId)
         }
     }
+    //endregion
 
-    fun pauseTrip() {
-        viewModelScope.launch {
-            _appUiState.update { it.copy(isPaused = true) }
-            dataStoreRepository.saveIsPausedPreference(true)
-            trackRepository.updateTrackEndById(appUiState.value.newTrackId, getCurrentDateTime())
-        }
-    }
-
-    fun endTrip() {
-        pauseTrip()
-        viewModelScope.launch {
-            tripRepository.updateTripEndById(appUiState.value.newTripId, getCurrentDateTime())
-            _appUiState.update { it.copy(isPaused = false) }
-        }
-        resetPreferences()
-    }
-
-    fun continueTrip(tripInfo: NewTripInfo/*tripMode: TripMode, tripId: Long*/) {
-        val start = getCurrentDateTime()
-
-        viewModelScope.launch {
-            val trackNumber = trackRepository.getLatestTrackNumberByTripId(tripInfo.tripId)
-            val trackId = trackRepository.insert(
-                Track(
-                    id = 0,
-                    tripId = tripInfo.tripId,    // appUiState.value.newTripId
-                    type = tripInfo.tripMode.getDisplayName(),
-//                    name = tripMode.getDisplayName() + " on " + car.getDisplayName(),
-                    name = generateTrackName(
-                        tripInfo.trackName,
-                        tripInfo.tripMode
-                    ),
-                    number = trackNumber + 1,
-                    start = start,
-                    end = "",
-                    carId = appUiState.value.carSelected!!.id
-                )
-            )
-            _appUiState.update {
-                it.copy(
-                    isPaused = false,
-                    newTrackId = trackId
-                )
-            }
-            dataStoreRepository.saveTripIdPreference(tripInfo.tripId)
-            dataStoreRepository.saveTrackIdPreference(appUiState.value.newTrackId)
-            dataStoreRepository.saveIsPausedPreference(false)
-
-            _appUiState.update {
-                it.copy(
-                    newTrackSegmentId = trackSegmentRepository.insert(
-                        TrackSegment(
-                            id = 0,
-                            trackId = trackId,  // cannot use appUiState.value.newTrackId
-                            number = 1
-                        )
-                    )
-                )
-            }
-            dataStoreRepository.saveTrackSegmentIdPreference(appUiState.value.newTrackSegmentId)
-        }
-    }
-
-    fun getTripWithTracksById(tripId: Long): Flow<TripWithTracks?> {
-        return tripWithTracksRepository.getById(tripId)
-    }
-
-    fun getAdditionalTripInfo(): Flow<List<AdditionalTripInfo>> {
-        return tripRepository.getAdditionalTripInfo()
-    }
-
-    fun generateGPX() {
-        viewModelScope.launch {
-            val res = yong.jianwen.heatmap.GPXGenerator.generate(tripWithTracksRepository.getByIdSuspend(31))
-            Log.d("TEST", res)
-        }
-    }
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    suspend fun generateGPXByTripId(tripId: Long): String {
-        viewModelScope.launch {
-            _appUiState.update { it.copy(moreExpanded = true) }
-            d("TESTTEST", yong.jianwen.heatmap.GPXGenerator.generate(tripWithTracksRepository.getByIdSuspend(tripId)))
-        }
-
-        val res = viewModelScope.async {
-            yong.jianwen.heatmap.GPXGenerator.generate(tripWithTracksRepository.getByIdSuspend(tripId))
-        }
-        return res.await()
-        /*res.invokeOnCompletion {
-            if (it == null) {
-                return@invokeOnCompletion res.getCompleted()
-            }
-        }*/
-    }
-
+    //region Show and hide menu, bottom bar and dialogs
     fun showMoreMenu() {
-        viewModelScope.launch {
-            _appUiState.update { it.copy(moreExpanded = true) }
-        }
+        _uiState.update { it.copy(moreExpanded = true) }
     }
 
     fun hideMoreMenu() {
-        viewModelScope.launch {
-            _appUiState.update { it.copy(moreExpanded = false) }
-        }
+        _uiState.update { it.copy(moreExpanded = false) }
     }
 
-    fun showDeleteTripDialog(trip: Trip) {
-        // TODO: other trip fields
-        _appUiState.update { it.copy(tripIdToDelete = trip.id, deleteTripExpanded = true) }
+    fun showBottomBar() {
+        _uiState.update { it.copy(bottomBarVisible = true) }
     }
 
-    fun hideDeleteTripDialog() {
-        _appUiState.update { it.copy(tripIdToDelete = -1, deleteTripExpanded = false) }
+    fun hideBottomBar() {
+        _uiState.update { it.copy(bottomBarVisible = false) }
     }
 
     fun showCarDialog() {
-        _appUiState.update { it.copy(carExpanded = true) }
+        _uiState.update { it.copy(carExpanded = true) }
     }
 
     fun hideCarDialog() {
-        _appUiState.update { it.copy(carExpanded = false) }
+        _uiState.update { it.copy(carExpanded = false) }
     }
 
     fun showModeDialog() {
-        _appUiState.update { it.copy(modeExpanded = true) }
+        _uiState.update { it.copy(modeExpanded = true) }
     }
 
     fun hideModeDialog() {
-        _appUiState.update { it.copy(modeExpanded = false) }
+        _uiState.update { it.copy(modeExpanded = false) }
     }
 
-    fun showAlertDialog() {
-        _appUiState.update { it.copy(alertExpanded = true) }
+    fun showDeleteTripDialog(trip: Trip) {
+        _uiState.update { it.copy(tripIdToDelete = trip.id, deleteTripExpanded = true) }
+    }
+
+    fun hideDeleteTripDialog() {
+        _uiState.update { it.copy(tripIdToDelete = -1, deleteTripExpanded = false) }
     }
 
     fun hideAlertDialog() {
-        _appUiState.update { it.copy(alertExpanded = false) }
+        _uiState.update { it.copy(alertExpanded = false) }
+    }
+    //endregion
+
+    suspend fun generateGPXByTripId(tripId: Long): String {
+        viewModelScope.launch {
+            _uiState.update { it.copy(moreExpanded = true) }
+            d("TEST", GPXGenerator.generate(tripWithTracksRepository.getByIdSuspend(tripId)))
+        }
+
+        val res = viewModelScope.async {
+            GPXGenerator.generate(tripWithTracksRepository.getByIdSuspend(tripId))
+        }
+        return res.await()
     }
 
     companion object {
@@ -454,26 +420,3 @@ class AppViewModel(
         }
     }
 }
-
-data class AppUiState(
-    val cars: List<Car> = listOf(),
-    val trips: List<Trip> = listOf(),
-    var currentPage: yong.jianwen.heatmap.CurrentPage = yong.jianwen.heatmap.CurrentPage.HOME,
-    var carSelected: Car? = null,
-    var modeSelected: TripMode? = null,
-    var newTripId: Long = -1,
-    var newTrackId: Long = -1,
-    var newTrackSegmentId: Long = -1,
-    var isPaused: Boolean = false,
-    var tripIdToDelete: Long = -1,
-    var deleteTripExpanded: Boolean = false,
-    var carExpanded: Boolean = false,
-    var modeExpanded: Boolean = false,
-    var isUpdatingCarOrMode: Boolean = false,
-    var updatingCarOrModeSelected: Selectable? = null,
-    var updatingTrackId: Long = -1,
-    var moreExpanded: Boolean = false,
-    var alertExpanded: Boolean = false,
-    var chips: List<AdditionalTripInfo> = listOf(),
-    var allTrips: List<TripWithTracks> = listOf()
-)

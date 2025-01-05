@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">HEAT MAP</string>
-    <string name="trip_detail_screen_title">Trip Detail</string>
+    <string name="trip_detail_screen_title">Trip Details</string>
 
     <!-- Button labels -->
     <string name="back">Previous Screen</string>
@@ -16,12 +16,18 @@
     <string name="edit">Edit</string>
     <string name="delete">Delete</string>
     <string name="save">Save</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="copy_gpx">Copy GPX</string>
+    <string name="manage_tracks">Manage Tracks</string>
 
     <!-- Content descriptions -->
     <string name="edit_item">Edit %s</string>
     <string name="delete_item">Delete %s</string>
+    <string name="expand_track">Expand track</string>
+    <string name="done">Done</string>
 
     <!-- Text labels -->
+    <string name="get_started_label">Choose vehicle and mode\nClick Start</string>
     <string name="add_new_vehicle">Add New Vehicle</string>
     <string name="delete_vehicle">Delete Vehicle</string>
     <string name="manufacturer">Manufacturer</string>
@@ -31,4 +37,13 @@
     <string name="default_trip_name">Trip on %s</string>
     <string name="default_track_name">%1$s %2$s</string>
     <string name="edit_vehicle">Edit Vehicle</string>
+    <string name="update_mode">Update Mode</string>
+    <string name="delete_trip">Delete Trip</string>
+    <string name="confirm_delete_trip">Delete trip ID %1$d?</string>
+    <string name="update_vehicle">Update Vehicle</string>
+    <string name="rename_trip">Rename Trip</string>
+    <string name="rename_track">Rename Track</string>
+    <string name="trip_name">Trip Name</string>
+    <string name="track_name">Track Name</string>
+    <string name="car_in_use_error">%1$s is in use.</string>
 </resources>

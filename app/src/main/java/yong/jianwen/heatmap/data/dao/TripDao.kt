@@ -6,7 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import yong.jianwen.heatmap.data.entity.Trip
-import yong.jianwen.heatmap.data.helper.AdditionalTripInfo
+import yong.jianwen.heatmap.data.helper.CarAndModeForTrip
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -27,7 +27,7 @@ interface TripDao {
         INNER JOIN car ON car.id = track.car_id
         GROUP BY trip.id, track.type, car.id
     """)
-    fun getAdditionalTripInfo(): Flow<List<AdditionalTripInfo>>
+    fun getCarsAndModesForEachTrip(): Flow<List<CarAndModeForTrip>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(trip: Trip): Long

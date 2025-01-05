@@ -2,8 +2,8 @@ package yong.jianwen.heatmap.ui
 
 import android.annotation.SuppressLint
 import android.content.res.Configuration
-import android.util.Log
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -13,12 +13,17 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -27,11 +32,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,8 +46,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,6 +64,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
@@ -65,8 +73,25 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import yong.jianwen.heatmap.CurrentPage
+import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraBoundsOptions
+import com.mapbox.maps.EdgeInsets
+import com.mapbox.maps.Style
+import com.mapbox.maps.coroutine.awaitCameraForCoordinates
+import com.mapbox.maps.dsl.cameraOptions
+import com.mapbox.maps.extension.compose.MapEffect
+import com.mapbox.maps.extension.compose.MapboxMap
+import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotation
+import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
+import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
+import com.mapbox.maps.extension.compose.annotation.rememberIconImage
+import com.mapbox.maps.extension.compose.rememberMapState
+import com.mapbox.maps.extension.compose.style.GenericStyle
+import com.mapbox.maps.plugin.gestures.generated.GesturesSettings
+import kotlinx.coroutines.launch
 import yong.jianwen.heatmap.R
+import yong.jianwen.heatmap.data.entity.Car
 import yong.jianwen.heatmap.data.entity.Track
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
@@ -81,28 +106,13 @@ import yong.jianwen.heatmap.ui.component.MyDialog
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.NotoSans
 import yong.jianwen.heatmap.ui.theme.labelMediumSmall
-import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraBoundsOptions
-import com.mapbox.maps.EdgeInsets
-import com.mapbox.maps.Style
-import com.mapbox.maps.coroutine.awaitCameraForCoordinates
-import com.mapbox.maps.dsl.cameraOptions
-import com.mapbox.maps.extension.compose.MapEffect
-import com.mapbox.maps.extension.compose.MapboxMap
-import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
-import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
-import com.mapbox.maps.extension.compose.rememberMapState
-import com.mapbox.maps.extension.compose.style.GenericStyle
-import com.mapbox.maps.plugin.gestures.generated.GesturesSettings
-import kotlinx.coroutines.launch
 
 @SuppressLint("DefaultLocale")
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun TripDetailScreen(
-    uiState: AppUiState,
-    _tripWithTracks: TripWithTracks?,
-    onTripNameClicked: (tripId: Long) -> Unit,
+    uiState: UiState,
+    tripWithTracksOrNothing: TripWithTracks?,
     onTrackPointClicked: (String) -> Unit,
     onPauseTrip: () -> Unit,
     onContinueTrip: (tripId: Long) -> Unit,
@@ -110,18 +120,14 @@ fun TripDetailScreen(
     onUpdateTrip: (trip: UpdateTrip) -> Unit,
     onUpdateTrack: (track: UpdateTrack) -> Unit,
     onDeleteClicked: (trip: Trip) -> Unit,
-    onDeleteDismissed: () -> Unit,
     onChooseVehicleClicked: (track: Track) -> Unit,
-    onChooseVehicleDismissed: () -> Unit,
     onChooseModeClicked: (track: Track) -> Unit,
-    onChooseModeDismissed: () -> Unit,
     onBack: () -> Unit,
     onMoreClicked: () -> Unit,
     onMoreDismissed: () -> Unit,
-    onMoreItem1Clicked: (tripId: Long) -> Unit,
-    modifier: Modifier = Modifier
+    onMoreItem1Clicked: (tripId: Long) -> Unit
 ) {
-    val tripWithTracks = _tripWithTracks ?: TripWithTracks(
+    val tripWithTracks = tripWithTracksOrNothing ?: TripWithTracks(
         trip = Trip(
             id = 0,
             name = "",
@@ -153,249 +159,71 @@ fun TripDetailScreen(
             }
         }
     }
-    /*var northernmost = -90.0
-    var southernmost = 90.0
-    var easternmost = -180.0
-    var westernmost = 180.0
-    tripWithTracks.tracks.flatMap { track ->
-        track.trackSegments.flatMap { trackSegment ->
-            trackSegment.trackPoints.map { trackPoint ->
-                Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-            }
-        }
-    }.forEach { point ->
-        northernmost = Math.max(northernmost, point.latitude())
-        southernmost = Math.min(southernmost, point.latitude())
-        easternmost = Math.max(easternmost, point.longitude())
-        westernmost = Math.min(westernmost, point.longitude())
-    }
-    val cornerPoints = listOf(
-        Point.fromLngLat(westernmost, southernmost),
-        Point.fromLngLat(westernmost, northernmost),
-        Point.fromLngLat(easternmost, northernmost),
-        Point.fromLngLat(easternmost, southernmost)
-    )*/
-//    Log.d("TESTTEST100", cornerPoints.toString())
-//
-//    val cornerP by rememberSaveable { mutableStateOf(cornerPoints) }
 
-//    val northernmost by rememberSaveable {mutableStateOf()}
+    var latitudeSelected by remember { mutableDoubleStateOf(-1.0) }
+    var longitudeSelected by remember { mutableDoubleStateOf(-1.0) }
 
-    /*val northernmost = points.maxByOrNull { it.latitude() }?.latitude() ?: 10.0
-    val southernmost = points.minByOrNull { it.latitude() }?.latitude() ?: 10.0
-    val easternmost = points.maxByOrNull { it.longitude() }?.longitude() ?: 10.0
-    val westernmost = points.minByOrNull { it.longitude() }?.longitude() ?: 10.0*/
-
-    var northernmost1 by rememberSaveable {
-        mutableDoubleStateOf(tripWithTracks.tracks.flatMap { track ->
-            track.trackSegments.flatMap { trackSegment ->
-                trackSegment.trackPoints.map { trackPoint ->
-                    Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                }
-            }
-        }.maxByOrNull { it.latitude() }?.latitude() ?: 0.0)
-    }
-    var southernmost1 by rememberSaveable {
-        mutableDoubleStateOf(tripWithTracks.tracks.flatMap { track ->
-            track.trackSegments.flatMap { trackSegment ->
-                trackSegment.trackPoints.map { trackPoint ->
-                    Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                }
-            }
-        }.minByOrNull { it.latitude() }?.latitude() ?: 0.0)
-    }
-    var easternmost1 by rememberSaveable {
-        mutableDoubleStateOf(tripWithTracks.tracks.flatMap { track ->
-            track.trackSegments.flatMap { trackSegment ->
-                trackSegment.trackPoints.map { trackPoint ->
-                    Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                }
-            }
-        }.maxByOrNull { it.longitude() }?.longitude() ?: 0.0)
-    }
-    var westernmost1 by rememberSaveable {
-        mutableDoubleStateOf(tripWithTracks.tracks.flatMap { track ->
-            track.trackSegments.flatMap { trackSegment ->
-                trackSegment.trackPoints.map { trackPoint ->
-                    Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                }
-            }
-        }.minByOrNull { it.longitude() }?.longitude() ?: 0.0)
-    }
-
-    /*LaunchedEffect(_tripWithTracks) {
-        coroutineScope.launch {
-            if (_tripWithTracks != null) {
-                northernmost1 = _tripWithTracks.tracks.flatMap { track ->
-                    track.trackSegments.flatMap { trackSegment ->
-                        trackSegment.trackPoints.map { trackPoint ->
-                            Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                        }
-                    }
-                }.maxByOrNull { it.latitude() }?.latitude() ?: 0.0
-
-                southernmost1 = _tripWithTracks.tracks.flatMap { track ->
-                    track.trackSegments.flatMap { trackSegment ->
-                        trackSegment.trackPoints.map { trackPoint ->
-                            Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                        }
-                    }
-                }.minByOrNull { it.latitude() }?.latitude() ?: 0.0
-
-                easternmost1 = _tripWithTracks.tracks.flatMap { track ->
-                    track.trackSegments.flatMap { trackSegment ->
-                        trackSegment.trackPoints.map { trackPoint ->
-                            Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                        }
-                    }
-                }.maxByOrNull { it.longitude() }?.longitude() ?: 0.0
-
-                westernmost1 = _tripWithTracks.tracks.flatMap { track ->
-                    track.trackSegments.flatMap { trackSegment ->
-                        trackSegment.trackPoints.map { trackPoint ->
-                            Point.fromLngLat(trackPoint.longitude, trackPoint.latitude)
-                        }
-                    }
-                }.minByOrNull { it.longitude() }?.longitude() ?: 0.0
-            }
-        }
-    }*/
-
-    Log.d(
-        "TESTTEST",
-        Point.fromLngLat(westernmost1, southernmost1).toString()
-    )
-    Log.d(
-        "TESTTEST",
-        Point.fromLngLat(easternmost1, northernmost1).toString()
-    )
+    var toolVisible by remember { mutableStateOf(false) }
 
     if (renameExpanded) {
-        MyDialog(
-            title = when (screen) {
-                0 -> "Rename Trip"
-                1 -> "Rename Track"
-                2 -> stringResource(R.string.delete_vehicle)
-                else -> ""
-            },
+        RenameDialog(
             onDismissRequest = { renameExpanded = false },
-            button1Label = when (screen) {
-                0, 1 -> stringResource(R.string.save)
-                2 -> stringResource(R.string.delete)
-                else -> null
-            },
-            button1Color = when (screen) {
-                2 -> MaterialTheme.colorScheme.error
-                else -> null
-            },
-            button1Enabled = true,
-            onButton1Clicked = {
-                when (screen) {
-                    0 -> {
-                        onUpdateTrip(
-                            UpdateTrip(
-                                id = tripWithTracks.trip.id,
-                                name = tripOrTrackName
-                            )
-                        )
-                        renameExpanded = false
-                    }
-
-                    1 -> {
-                        onUpdateTrack(
-                            UpdateTrack(
-                                id = trackId,
-                                name = tripOrTrackName
-                            )
-                        )
-                        renameExpanded = false
-                    }
-                }
-            },
-            /*button2Label = when (screen) {
-                0 -> stringResource(R.string.manage_vehicle)
-                else -> null
-            },
-            button2Enabled = when (screen) {
-                0 -> uiState.cars.isNotEmpty()
-                else -> true
-            },
-            onClickedButton2 = {
-                when (screen) {
-                    0 -> toolVisible = !toolVisible
-                }
-            }*/
-        ) { mod ->
-            if (screen == 0 || screen == 1) {
-                val focusRequester = remember { FocusRequester() }
-                val textFieldValue =
-                    remember {
-                        mutableStateOf(
-                            TextFieldValue(
-                                tripOrTrackName,
-                                TextRange(tripOrTrackName.length)
-                            )
-                        )
-                    }
-
-                LaunchedEffect(Unit) {
-//                focusRequester.requestFocus()
-                }
-
-                OutlinedTextField(
-                    value = textFieldValue.value,
-                    onValueChange = {
-                        textFieldValue.value = it.copy(it.text.trimStart())
-                        tripOrTrackName = textFieldValue.value.text
-                    },
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences,
-                        imeAction = ImeAction.Done
-                    ),
-                    label = {
-                        Text(
-                            text = if (screen == 0) "Trip Name" else "Track Name",
-                            fontFamily = NotoSans
-                        )
-                    },
-                    shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
-                    /*singleLine = true,*/
-                    maxLines = 5,
-                    modifier = Modifier
-                        .padding(vertical = dimensionResource(R.dimen.big_button_separation))
-                        .focusRequester(focusRequester)
-                )
-            }
-        }
+            screen = screen,
+            tripWithTracks = tripWithTracks,
+            tripOrTrackName = tripOrTrackName,
+            trackId = trackId,
+            onUpdateTrip = onUpdateTrip,
+            onUpdateTrack = onUpdateTrack,
+            onValueChanged = { tripOrTrackName = it }
+        )
     }
 
     Scaffold(
         topBar = {
             HeatMapAppBar(
-                title = "Trip Details",
+                title = stringResource(R.string.trip_detail_screen_title),
                 onAppBarClicked = {
                     coroutineScope.launch {
                         lazyListState.animateScrollToItem(tripWithTracks.tracks.size - 1)
                     }
-                    /*mapExpanded = true*/
                 },
                 showBackButton = true,
                 showMoreButton = true,
                 onBackClicked = { onBack() },
-                onMoreClicked = onMoreClicked
+                onMoreClicked = onMoreClicked,
+                isDone = !toolVisible,
+                onDoneClicked = {
+                    toolVisible = false
+                }
             ) {
                 DropdownMenu(
                     expanded = uiState.moreExpanded,
-                    onDismissRequest = onMoreDismissed
+                    onDismissRequest = onMoreDismissed,
+                    shape = RoundedCornerShape(dimensionResource(R.dimen.card_medium_corner_radius))
                 ) {
                     DropdownMenuItem(
                         text = {
                             Text(
-                                text = "Copy GPX...",
+                                text = stringResource(R.string.copy_gpx),
                                 fontFamily = NotoSans
                             )
                         },
                         onClick = { onMoreItem1Clicked(tripWithTracks.trip.id) }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(R.string.manage_tracks),
+                                fontFamily = NotoSans
+                            )
+                        },
+                        onClick = {
+                            toolVisible = !toolVisible
+                            onMoreDismissed()
+                            coroutineScope.launch {
+                                lazyListState.animateScrollToItem(1)
+                            }
+                        }
                     )
                 }
             }
@@ -403,7 +231,9 @@ fun TripDetailScreen(
     ) {
         LazyColumn(
             state = lazyListState,
-            modifier = Modifier.padding(it)
+            modifier = Modifier
+                .padding(it)
+                .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
         ) {
             item {
                 Column(
@@ -415,9 +245,7 @@ fun TripDetailScreen(
                             stringResource(R.string.trip_id_which),
                             tripWithTracks.trip.id
                         ),
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier
-//                            .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
+                        style = MaterialTheme.typography.labelSmall
                     )
                     Surface(
                         shape = RoundedCornerShape(dimensionResource(R.dimen.chip_corner_radius))
@@ -431,8 +259,6 @@ fun TripDetailScreen(
                                     renameExpanded = true
                                     screen = 0
                                 }
-                                //.fillMaxWidth()
-                                //.padding(vertical = dimensionResource(R.dimen.card_inner_vertical_padding))
                                 .padding(10.dp)
                         )
                     }
@@ -454,7 +280,7 @@ fun TripDetailScreen(
                             .padding(top = dimensionResource(R.dimen.card_inner_vertical_padding))
                     ) {
                         val filteredChips =
-                            uiState.chips.filter { chip -> tripWithTracks.trip.id == chip.tripId }
+                            uiState.carsAndModesForEachTrip.filter { chip -> tripWithTracks.trip.id == chip.tripId }
                         filteredChips.forEach { chip ->
                             MyChip(
                                 label1 = chip.mode,
@@ -474,10 +300,6 @@ fun TripDetailScreen(
                             bearing(0.0)
                         }*/
                     }
-                    var markerResourceId by remember {
-                        mutableStateOf(R.drawable.ic_launcher_background)
-                    }
-
                     Surface(
                         shape = RoundedCornerShape(12.dp)
                     ) {
@@ -516,12 +338,10 @@ fun TripDetailScreen(
                                 .height((250 * 1.8).dp)
                         ) {
                             // Get reference to the raw MapView using MapEffect
-                            if (_tripWithTracks != null && _tripWithTracks.tracks.isNotEmpty())
+                            if (tripWithTracksOrNothing != null && tripWithTracksOrNothing.tracks.isNotEmpty()) {
                                 MapEffect(Unit) { mapView ->
                                     // Use mapView to access the Mapbox Maps APIs not in the Compose extension.
                                     // Changes inside `MapEffect` may conflict with Compose states.
-
-//                                    coroutineScope.launch {
                                     var northernmost2 = -90.0
                                     var southernmost2 = 90.0
                                     var easternmost2 = -180.0
@@ -550,7 +370,7 @@ fun TripDetailScreen(
                                     mapViewportState.setCameraOptions(cameraPosition)
 
                                     val cameraBoundsOptions = CameraBoundsOptions.Builder()
-                                        .maxZoom(15.0)
+//                                        .maxZoom(15.0)
 //                                    .bounds(
 //                                        CoordinateBounds(
 //                                            Point.fromLngLat(westernmost1, southernmost1),
@@ -562,36 +382,51 @@ fun TripDetailScreen(
                                         .build()
                                     mapView.mapboxMap.setBounds(cameraBoundsOptions)
                                 }
-                            tripWithTracks.tracks.flatMap { track ->
-                                track.trackSegments
-                            }.forEach {
+                            }
+                            val colors =
+                                arrayOf(
+                                    Color.Red,
+                                    Color.Yellow,
+                                    Color.Green,
+                                    Color.Blue,
+                                    Color.Magenta
+                                )
+                            tripWithTracks.tracks.forEachIndexed { index, track ->
                                 PolylineAnnotation(
-                                    points = it.trackPoints.map { trackPoint ->
-                                        Point.fromLngLat(
-                                            trackPoint.longitude,
-                                            trackPoint.latitude
-                                        )
-                                    }
+                                    points = track.trackSegments
+                                        .flatMap { trackSegment -> trackSegment.trackPoints }
+                                        .map { trackPoint ->
+                                            Point.fromLngLat(
+                                                trackPoint.longitude,
+                                                trackPoint.latitude
+                                            )
+                                        }
                                 ) {
-                                    lineColor = Color.Red
+                                    lineColor = colors[index % 5]
                                     lineWidth = 2.0
                                 }
                             }
-                            /*PolylineAnnotation(
-                                points = tripWithTracks.tracks.flatMap { track ->
-                                    track.trackSegments.flatMap { trackSegment ->
-                                        trackSegment.trackPoints.map {
-                                            Point.fromLngLat(
-                                                it.longitude,
-                                                it.latitude
-                                            )
-                                        }
-                                    }
-                                }
+
+//                            val marker = rememberIconImage(R.drawable.map)
+//                            points.forEach { point ->
+////                                PointAnnotation(
+////                                    point = point
+////                                ) {
+////                                    iconImage = marker
+////                                }
+//                                CircleAnnotation(point = point) {
+//                                    circleColor = Color.Blue
+//                                    circleRadius = 1.0
+//                                }
+//                            }
+
+                            /*PointAnnotation(
+                                point = Point.fromLngLat(
+                                    longitudeSelected,
+                                    latitudeSelected
+                                )
                             ) {
-                                lineColor = Color.Red
-                                lineWidth = 2.0
-//                                lineOpacity = 0.2
+                                iconImage = marker
                             }*/
                         }
                     }
@@ -615,7 +450,7 @@ fun TripDetailScreen(
                     Spacer(
                         modifier = Modifier.height(dimensionResource(R.dimen.card_medium_content_padding))
                     )
-                    Divider()
+                    HorizontalDivider()
                 }
             }
             items(
@@ -673,8 +508,6 @@ fun TripDetailScreen(
                             ) {
                                 MyChip(
                                     label1 = track.track.type,
-                                    /*modifier = Modifier
-                                        .background(MaterialTheme.colorScheme.secondaryContainer),*/
                                     onLabel1Clicked = { onChooseModeClicked(track.track) },
                                     label2 = uiState.cars.first { car -> car.id == track.track.carId }
                                         .getDisplayName(),
@@ -682,9 +515,6 @@ fun TripDetailScreen(
                                 )
                             }
                         }
-                        /*Spacer(
-                            modifier = Modifier.weight(1f)
-                        )*/
                         IconButton(
                             onClick = { sectionExpanded = !sectionExpanded }
                         ) {
@@ -693,8 +523,39 @@ fun TripDetailScreen(
                                     Icons.Filled.KeyboardArrowUp
                                 else
                                     Icons.Filled.KeyboardArrowDown,
-                                contentDescription = "Expand track"
+                                contentDescription = stringResource(R.string.expand_track)
                             )
+                        }
+                        AnimatedVisibility(
+                            visible = toolVisible
+                        ) {
+                            Row {
+                                IconButton(
+                                    onClick = {
+
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = String.format(
+                                            stringResource(R.string.delete_item, "123")
+                                        ),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Edit,
+                                        contentDescription = String.format(
+                                            stringResource(R.string.edit_item, "123")
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -714,7 +575,7 @@ fun TripDetailScreen(
                             Column(
                                 verticalArrangement = Arrangement.spacedBy(3.dp),
                                 modifier = Modifier
-                                    .heightIn(0.dp, 100.dp)
+                                    .heightIn(0.dp, 500.dp)
                                     .verticalScroll(rememberScrollState())
                             ) {
                                 //                            items(
@@ -736,6 +597,8 @@ fun TripDetailScreen(
                                                         longitude
                                                     )
                                                 )
+                                                latitudeSelected = latitude.toDouble()
+                                                longitudeSelected = longitude.toDouble()
                                             }
                                             .fillMaxWidth()
                                             .padding(8.dp)
@@ -771,7 +634,7 @@ fun TripDetailScreen(
                                                 modifier = Modifier
                                                     .weight(1f)
                                             )
-                                            Divider(
+                                            VerticalDivider(
                                                 modifier = Modifier
                                                     .fillMaxHeight()
                                                     .width(1.dp)
@@ -791,13 +654,12 @@ fun TripDetailScreen(
                                 modifier = Modifier
                                     .height(6.dp)
                             )
-//                            }
                         }
                     }
                     Spacer(
                         modifier = Modifier.height(5.dp)
                     )
-                    Divider()
+                    HorizontalDivider()
                     Spacer(
                         modifier = Modifier.height(5.dp)
                     )
@@ -814,14 +676,13 @@ fun TripDetailScreen(
 fun TripDetailCompactPreview() {
     HeatMapTheme {
         TripDetailScreen(
-            uiState = AppUiState(
+            uiState = UiState(
                 cars = DataSource.getMockCars(),
-                trips = DataSource.getMockTrips(),
+                allTripsWithTracks = listOf(DataSource.getMockTripWithTracks()),
                 currentPage = yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL,
-                chips = DataSource.getChips()
+                carsAndModesForEachTrip = DataSource.getChips()
             ),
-            _tripWithTracks = DataSource.getMockTripWithTracks(),
-            onTripNameClicked = { },
+            tripWithTracksOrNothing = DataSource.getMockTripWithTracks(),
             onTrackPointClicked = { },
             onPauseTrip = { },
             onContinueTrip = { },
@@ -829,11 +690,8 @@ fun TripDetailCompactPreview() {
             onUpdateTrip = { },
             onUpdateTrack = { },
             onDeleteClicked = { },
-            onDeleteDismissed = { },
             onChooseVehicleClicked = { },
-            onChooseVehicleDismissed = { },
             onChooseModeClicked = { },
-            onChooseModeDismissed = { },
             onMoreClicked = { },
             onMoreDismissed = { },
             onMoreItem1Clicked = { },

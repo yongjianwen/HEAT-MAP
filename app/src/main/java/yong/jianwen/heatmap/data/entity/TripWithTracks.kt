@@ -10,6 +10,5 @@ data class TripWithTracks(
         entityColumn = "trip_id",
         entity = Track::class
     )
-    val tracks: List<TrackWithTrackSegments>,
-//    val chips: List<Pair<String, String>> = emptyList()
+    val tracks: List<TrackWithTrackSegments>
 )

@@ -2,8 +2,14 @@ package yong.jianwen.heatmap.ui
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -31,6 +37,8 @@ fun HeatMapAppBar(
     showMoreButton: Boolean = false,
     onBackClicked: () -> Unit = { },
     onMoreClicked: () -> Unit = { },
+    isDone: Boolean = true,
+    onDoneClicked: () -> Unit = { },
     dropdownMenuContent: @Composable () -> Unit = { }
 ) {
     TopAppBar(
@@ -44,16 +52,20 @@ fun HeatMapAppBar(
             Text(
                 text = title,
                 fontFamily = NotoSans,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Black,
+                modifier = Modifier
+                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
             )
         },
         navigationIcon = if (showBackButton) {
             {
                 IconButton(
-                    onClick = onBackClicked
+                    onClick = onBackClicked,
+                    modifier = Modifier
+                        .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.back)
                     )
                 }
@@ -65,11 +77,25 @@ fun HeatMapAppBar(
             {
                 Box {
                     IconButton(
-                        onClick = onMoreClicked
+                        onClick = {
+                            if (isDone) {
+                                onMoreClicked()
+                            } else {
+                                onDoneClicked()
+                            }
+                        },
+                        modifier = Modifier
+                            .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = stringResource(R.string.more_actions)
+                            imageVector = if (isDone)
+                                Icons.Filled.MoreVert
+                            else
+                                Icons.Filled.Check,
+                            contentDescription = if (isDone)
+                                stringResource(R.string.more_actions)
+                            else
+                                stringResource(R.string.done)
                         )
                     }
                     dropdownMenuContent()

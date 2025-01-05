@@ -7,18 +7,21 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -35,84 +38,38 @@ import yong.jianwen.heatmap.ui.component.MyChip
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.labelMediumSmall
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun TripRow(
-    uiState: AppUiState,
+    uiState: UiState,
     windowSize: WindowWidthSizeClass,
     trip: Trip,
-    onCardClick: (tripId: Long) -> Unit,
+    onCardClicked: (tripId: Long) -> Unit,
     onPauseTrip: () -> Unit,
     onContinueTrip: (tripId: Long) -> Unit,
     onEndTrip: () -> Unit,
     onDeleteClicked: (trip: Trip) -> Unit,
-    modifier: Modifier = Modifier,
-    cardColor: Color? = null
+    modifier: Modifier = Modifier
 ) {
-    /*val animatedColor by animateColorAsState(
-        if (uiState.isPaused) Color.Red else Color.Blue,
-        label = "color"
-    )*/
     Surface(
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier
-//            .clickable { onCardClick(trip.id) }
+        color = if (uiState.newTripId == trip.id && uiState.isPaused == false)
+            MaterialTheme.colorScheme.secondaryContainer
+        else
+            MaterialTheme.colorScheme.surface,
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = dimensionResource(R.dimen.card_outer_padding))
-        /*.drawBehind {
-            drawRect(animatedColor)
-        }*/
-        /*.background(brush = Brush.horizontalGradient(CustomTheme.colors.background))*/
     ) {
         when (windowSize) {
             WindowWidthSizeClass.Compact -> Column(
                 modifier = Modifier
-                    .clickable { onCardClick(trip.id) }
+                    .clickable { onCardClicked(trip.id) }
                     .fillMaxWidth()
                     .padding(dimensionResource(R.dimen.card_medium_content_padding))
+                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
             ) {
-                Text(
-                    text = String.format(stringResource(R.string.trip_id_which), trip.id),
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier
-                    // .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
-                )
-                Text(
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    text = trip.name,
-                    // style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier
-                        .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
-                )
-                Text(
-                    text = formatDisplayStartEndTimes(
-                        trip.start,
-                        trip.end,
-                        "YYYY/MM/dd h:mma",
-                        "h:mma"
-                    ),
-                    style = labelMediumSmall,
-                    modifier = Modifier
-                        .padding(vertical = dimensionResource(R.dimen.card_inner_vertical_padding))
-                )
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                    modifier = Modifier
-                        .padding(top = dimensionResource(R.dimen.card_inner_vertical_padding))
-                ) {
-                    val filteredChips = uiState.chips.filter { chip -> trip.id == chip.tripId }
-                    filteredChips.forEach { chip ->
-                        MyChip(
-                            label1 = chip.mode,
-                            label2 = chip.car.getDisplayName()
-                        )
-                    }
-                }
+                Content(uiState, trip)
                 Spacer(
-                    modifier = Modifier
-                        .height(dimensionResource(R.dimen.card_medium_content_padding))
+                    modifier = Modifier.height(dimensionResource(R.dimen.card_medium_content_padding))
                 )
                 Row(
                     horizontalArrangement = Arrangement.SpaceAround,
@@ -132,60 +89,21 @@ fun TripRow(
 
             else -> Row(
                 modifier = Modifier
-                    .clickable { onCardClick(trip.id) }
+                    .clickable { onCardClicked(trip.id) }
                     .padding(dimensionResource(R.dimen.card_medium_content_padding))
+                    .windowInsetsPadding(WindowInsets.safeContent.only(WindowInsetsSides.Horizontal))
             ) {
                 Column(
                     modifier = Modifier
                         .weight(1f)
                 ) {
-                    Text(
-                        text = String.format(stringResource(R.string.trip_id_which), trip.id),
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier
-                        // .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
-                    )
-                    Text(
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        text = trip.name,
-                        // style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier
-                            .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
-                    )
-                    Text(
-                        text = formatDisplayStartEndTimes(
-                            trip.start,
-                            trip.end,
-                            "YYYY/MM/dd h:mma",
-                            "h:mma"
-                        ),
-                        style = labelMediumSmall,
-                        modifier = Modifier
-                            .padding(vertical = dimensionResource(R.dimen.card_inner_vertical_padding))
-                    )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                        modifier = Modifier
-                            .padding(top = dimensionResource(R.dimen.card_inner_vertical_padding))
-                    ) {
-                        val filteredChips = uiState.chips.filter { chip -> trip.id == chip.tripId }
-                        filteredChips.forEach { chip ->
-                            MyChip(
-                                label1 = chip.mode,
-                                label2 = chip.car.getDisplayName()
-                            )
-                        }
-                    }
+                    Content(uiState, trip)
                 }
                 Spacer(
-                    modifier = Modifier
-                        .width(dimensionResource(R.dimen.card_medium_content_padding))
+                    modifier = Modifier.width(dimensionResource(R.dimen.card_medium_content_padding))
                 )
                 Column(
-                    verticalArrangement = Arrangement.SpaceAround,
-//                    modifier = Modifier.fillMaxHeight()
+                    verticalArrangement = Arrangement.SpaceAround
                 ) {
                     FourButtons(
                         uiState = uiState,
@@ -198,6 +116,51 @@ fun TripRow(
                     )
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun Content(
+    uiState: UiState,
+    trip: Trip
+) {
+    Text(
+        text = String.format(stringResource(R.string.trip_id_which), trip.id),
+        style = MaterialTheme.typography.labelSmall
+    )
+    Text(
+        fontSize = 20.sp,
+        fontWeight = FontWeight.Bold,
+        text = trip.name,
+        modifier = Modifier
+            .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
+    )
+    Text(
+        text = formatDisplayStartEndTimes(
+            trip.start,
+            trip.end,
+            "YYYY/MM/dd h:mma",
+            "h:mma"
+        ),
+        style = labelMediumSmall,
+        modifier = Modifier
+            .padding(vertical = dimensionResource(R.dimen.card_inner_vertical_padding))
+    )
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
+        verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
+        modifier = Modifier
+            .padding(top = dimensionResource(R.dimen.card_inner_vertical_padding))
+    ) {
+        val filteredChips =
+            uiState.carsAndModesForEachTrip.filter { chip -> trip.id == chip.tripId }
+        filteredChips.forEach { chip ->
+            MyChip(
+                label1 = chip.mode,
+                label2 = chip.car.getDisplayName()
+            )
         }
     }
 }
@@ -215,12 +178,10 @@ fun TripRowPreviewMedium() {
 }
 
 @Composable
-fun TripRowPreview(
-    windowSize: WindowWidthSizeClass
-) {
+fun TripRowPreview(windowSize: WindowWidthSizeClass) {
     HeatMapTheme {
         TripRow(
-            uiState = AppUiState(
+            uiState = UiState(
                 // Ongoing me -> Pause, End
                 newTripId = 1,
                 isPaused = false,
@@ -230,16 +191,15 @@ fun TripRowPreview(
                 // Not me -> Continue, Delete
                 /*newTripId = 2,
                 isPaused = true,*/
-                chips = DataSource.getChips()
+                carsAndModesForEachTrip = DataSource.getChips()
             ),
             windowSize = windowSize,
             trip = DataSource.getMockTrip(),
-            onCardClick = { },
+            onCardClicked = { },
             onPauseTrip = { },
             onContinueTrip = { },
             onEndTrip = { },
-            onDeleteClicked = { },
-//            cardColor = Color.Red
+            onDeleteClicked = { }
         )
     }
 }

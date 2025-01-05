@@ -17,11 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.tooling.preview.PreviewLightDark
-import yong.jianwen.heatmap.CurrentPage
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.local.DataSource
-import yong.jianwen.heatmap.ui.AppUiState
 import yong.jianwen.heatmap.ui.TripDetailScreen
+import yong.jianwen.heatmap.ui.UiState
 import yong.jianwen.heatmap.ui.theme.CustomTheme
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.chipLabel
@@ -144,14 +143,15 @@ fun MyChipPreview() {
 fun TripDetailCompactPreview() {
     HeatMapTheme {
         TripDetailScreen(
-            uiState = AppUiState(
+            uiState = UiState(
                 cars = DataSource.getMockCars(),
-                trips = DataSource.getMockTrips(),
+//                trips = DataSource.getMockTrips(),
+                allTripsWithTracks = listOf(DataSource.getMockTripWithTracks()),
                 currentPage = yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL,
-                chips = DataSource.getChips()
+                carsAndModesForEachTrip = DataSource.getChips()
             ),
-            _tripWithTracks = DataSource.getMockTripWithTracks(),
-            onTripNameClicked = { },
+            tripWithTracksOrNothing = DataSource.getMockTripWithTracks(),
+//            onTripNameClicked = { },
             onTrackPointClicked = { },
             onPauseTrip = { },
             onContinueTrip = { },
@@ -159,18 +159,14 @@ fun TripDetailCompactPreview() {
             onUpdateTrip = { },
             onUpdateTrack = { },
             onDeleteClicked = { },
-            onDeleteDismissed = { },
+//            onDeleteDismissed = { },
             onChooseVehicleClicked = { },
-            onChooseVehicleDismissed = { },
+//            onChooseVehicleDismissed = { },
             onChooseModeClicked = { },
-            onChooseModeDismissed = { },
+//            onChooseModeDismissed = { },
             onMoreClicked = { },
             onMoreDismissed = { },
             onMoreItem1Clicked = { },
-            /*northernmost = 0.0,
-            southernmost = 0.0,
-            easternmost = 0.0,
-            westernmost = 0.0,*/
             onBack = { }
         )
     }

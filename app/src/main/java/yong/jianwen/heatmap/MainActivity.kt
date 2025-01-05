@@ -1,10 +1,13 @@
 package yong.jianwen.heatmap
 
 import android.Manifest
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.Window
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -12,82 +15,85 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Row
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.dimensionResource
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import yong.jianwen.heatmap.data.TripMode
-import yong.jianwen.heatmap.data.entity.Car
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
 import yong.jianwen.heatmap.data.helper.NewTripInfo
 import yong.jianwen.heatmap.service.LocationService
 import yong.jianwen.heatmap.ui.AppViewModel
+import yong.jianwen.heatmap.ui.BottomBar
+import yong.jianwen.heatmap.ui.CarDialog
+import yong.jianwen.heatmap.ui.DeleteTripDialog
+import yong.jianwen.heatmap.ui.MapDialog
+import yong.jianwen.heatmap.ui.ModeDialog
 import yong.jianwen.heatmap.ui.TripDetailScreen
 import yong.jianwen.heatmap.ui.TripListScreen
 import yong.jianwen.heatmap.ui.component.MyDialog
-import yong.jianwen.heatmap.ui.component.MyDialogSelectableList
-import yong.jianwen.heatmap.ui.component.MyDialogText
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
-import yong.jianwen.heatmap.ui.theme.NotoSans
-import com.mapbox.bindgen.Value
-import com.mapbox.geojson.Point
-import com.mapbox.maps.CameraBoundsOptions
-import com.mapbox.maps.EdgeInsets
-import com.mapbox.maps.Style
-import com.mapbox.maps.coroutine.awaitCameraForCoordinates
-import com.mapbox.maps.dsl.cameraOptions
-import com.mapbox.maps.extension.compose.MapEffect
-import com.mapbox.maps.extension.compose.MapboxMap
-import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
-import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
-import com.mapbox.maps.extension.compose.rememberMapState
-import com.mapbox.maps.extension.compose.style.GenericStyle
-import com.mapbox.maps.extension.compose.style.importConfigs
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -111,731 +117,14 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-    @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             HeatMapTheme {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                ) {
-                    val appViewModel: AppViewModel = viewModel(factory = AppViewModel.factory)
-                    val appUiState by appViewModel.appUiState.collectAsState()
-
-                    val intent = Intent(this, LocationService::class.java)
-
-                    val navController = rememberNavController()
-                    val onBack = {
-                        appUiState.currentPage = yong.jianwen.heatmap.CurrentPage.HOME
-                        navController.navigateUp()
-                    }
-
-                    var screen by rememberSaveable { mutableIntStateOf(0) }
-
-                    val windowSize = calculateWindowSizeClass(this)
-
-                    if (appUiState.alertExpanded) {
-                        MyDialog(
-                            title = "Error",
-                            onDismissRequest = { appViewModel.hideAlertDialog() },
-                            button1Label = "Dismiss",
-                            onButton1Clicked = {
-                                appViewModel.hideAlertDialog()
-                            }
-                        ) {
-
-                        }
-                    }
-
-                    var mapExpanded by rememberSaveable { mutableStateOf(false) }
-
-                    if (mapExpanded) {
-                        MyDialog(
-                            title = "Heat Map",
-                            onDismissRequest = { mapExpanded = false }
-                        ) {
-                            val mapViewportState = rememberMapViewportState { }
-
-                            Surface(
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                MapboxMap(
-                                    mapViewportState = mapViewportState,
-                                    mapState = rememberMapState { },
-                                    logo = { },
-                                    attribution = { },
-                                    style = {
-                                        GenericStyle(
-                                            style = "", //Style.DARK,
-                                            styleImportsContent = {
-                                                StyleImport(
-                                                    importId = "standard",
-                                                    style = Style.DARK,
-                                                    configs = importConfigs {
-                                                        config("showTransitLabels", Value(false))
-                                                        config("showPlaceLabels", Value(false))
-                                                        config(
-                                                            "showPointOfInterestLabels",
-                                                            Value(false)
-                                                        )
-                                                        config("showRoadLabels", Value(false))
-                                                    }
-                                                )
-                                            }
-                                        )
-                                    },
-                                    /*style = {
-                                        MapboxStandardStyle {
-                                            lightPreset = LightPresetValue.NIGHT
-                                            theme = ThemeValue.DEFAULT
-                                            showPlaceLabels = BooleanValue(false)
-                                            showRoadLabels = BooleanValue(false)
-                                            showPointOfInterestLabels = BooleanValue(false)
-                                        }
-                                    },*/
-                                    /*style = { GenericStyle(
-                                        style = "", //Style.DARK,
-                                        styleImportsContent = {
-                                                StyleImport(
-                                                    importId = "standard",
-                                                    style = Style.DARK,
-                                                    configs = importConfigs {
-                                                        config("showTransitLabels", Value(false))
-                                                        config("showPlaceLabels", Value(false))
-                                                        config("showPointOfInterestLabels", Value(false))
-                                                        config("showRoadLabels", Value(false))
-                                                    }
-                                                )
-                                        }
-                                    ) },*/
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                ) {
-                                    // Get reference to the raw MapView using MapEffect
-                                    MapEffect(Unit) { mapView ->
-                                        val points = appUiState.allTrips.flatMap { tripWithTracks ->
-                                            tripWithTracks.tracks.flatMap { track ->
-                                                track.trackSegments.flatMap { trackSegment ->
-                                                    trackSegment.trackPoints.map { trackPoint ->
-                                                        Point.fromLngLat(
-                                                            trackPoint.longitude,
-                                                            trackPoint.latitude
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        var northernmost2 = -90.0
-                                        var southernmost2 = 90.0
-                                        var easternmost2 = -180.0
-                                        var westernmost2 = 180.0
-                                        points.forEach { point ->
-                                            northernmost2 =
-                                                Math.max(northernmost2, point.latitude())
-                                            southernmost2 =
-                                                Math.min(southernmost2, point.latitude())
-                                            easternmost2 =
-                                                Math.max(easternmost2, point.longitude())
-                                            westernmost2 =
-                                                Math.min(westernmost2, point.longitude())
-                                        }
-                                        val cornerPoints = listOf(
-                                            Point.fromLngLat(westernmost2, southernmost2),
-                                            Point.fromLngLat(westernmost2, northernmost2),
-                                            Point.fromLngLat(easternmost2, northernmost2),
-                                            Point.fromLngLat(easternmost2, southernmost2)
-                                        )
-
-                                        val cameraPosition =
-                                            mapView.mapboxMap.awaitCameraForCoordinates(
-                                                cornerPoints,
-                                                cameraOptions { },
-                                                EdgeInsets(100.0, 100.0, 100.0, 100.0)
-                                            )
-                                        mapViewportState.setCameraOptions(cameraPosition)
-
-                                        val cameraBoundsOptions =
-                                            CameraBoundsOptions.Builder()
-                                                .maxZoom(15.0)
-                                                .build()
-                                        mapView.mapboxMap.setBounds(cameraBoundsOptions)
-                                    }
-                                    appUiState.allTrips.flatMap { tripWithTracks ->
-                                        tripWithTracks.tracks.flatMap { track ->
-                                            track.trackSegments
-                                        }
-                                    }.forEach {
-                                        PolylineAnnotation(
-                                            points = it.trackPoints.map { trackPoint ->
-                                                Point.fromLngLat(
-                                                    trackPoint.longitude,
-                                                    trackPoint.latitude
-                                                )
-                                            }
-                                        ) {
-                                            lineColor = Color.Red
-                                            lineWidth = 5.0
-                                            lineOpacity = 0.1
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    if (appUiState.carExpanded) {
-                        var carIdToEdit by rememberSaveable { mutableIntStateOf(-1) }
-
-                        var carIdToDelete by rememberSaveable { mutableIntStateOf(-1) }
-                        var carNameToDelete by rememberSaveable { mutableStateOf("") }
-
-                        var manufacturer by rememberSaveable { mutableStateOf("") }
-                        var model by rememberSaveable { mutableStateOf("") }
-                        var numberPlate by rememberSaveable { mutableStateOf("") }
-
-                        var toolVisible by remember { mutableStateOf(false) }
-
-                        MyDialog(
-                            title = when (screen) {
-                                -1 -> "Error"
-                                0 -> if (!appUiState.isUpdatingCarOrMode) stringResource(R.string.choose_vehicle) else "Update Vehicle"
-                                1 -> stringResource(R.string.add_new_vehicle)
-                                2 -> stringResource(R.string.delete_vehicle)
-                                3 -> stringResource(R.string.edit_vehicle)
-                                else -> ""
-                            },
-                            onDismissRequest = {
-                                when (screen) {
-                                    0 -> {
-                                        appViewModel.hideCarDialog()
-                                    }
-
-                                    else -> screen = 0
-                                }
-                            },
-                            backgroundColor = if (screen == -1)
-                                MaterialTheme.colorScheme.error
-                            else
-                                null,
-                            button1Label = when (screen) {
-                                -1 -> "Dismiss"
-                                0 -> stringResource(R.string.add_vehicle)
-                                1 -> stringResource(R.string.save)
-                                2 -> stringResource(R.string.delete)
-                                3 -> stringResource(R.string.save)
-                                else -> null
-                            },
-                            button1Color = when (screen) {
-                                -1 -> MaterialTheme.colorScheme.onErrorContainer
-                                2 -> MaterialTheme.colorScheme.error
-                                else -> null
-                            },
-                            button1Enabled = when (screen) {
-                                1 -> manufacturer.isNotBlank() && model.isNotBlank() && numberPlate.isNotBlank()
-                                3 -> manufacturer.isNotBlank() && model.isNotBlank() && numberPlate.isNotBlank()
-                                else -> true
-                            },
-                            onButton1Clicked = {
-                                when (screen) {
-                                    -1 -> {
-                                        screen = 0
-                                    }
-
-                                    0 -> {
-                                        manufacturer = ""
-                                        model = ""
-                                        numberPlate = ""
-                                        screen = 1
-                                    }
-
-                                    1 -> {
-                                        appViewModel.addNewCar(
-                                            Car(
-                                                id = 0,
-                                                registrationNumber = numberPlate.trim(),
-                                                manufacturer = manufacturer.trim(),
-                                                model = model.trim()
-                                            )
-                                        )
-                                        manufacturer = ""
-                                        model = ""
-                                        numberPlate = ""
-                                        screen = 0
-                                    }
-
-                                    2 -> {
-                                        GlobalScope.launch(Dispatchers.Main) {
-                                            if (appViewModel.deleteCar(carIdToDelete)) {
-                                                screen = 0
-                                            } else {
-//                                                appViewModel.showAlertDialog()
-                                                screen = -1
-                                            }
-                                        }
-                                        /*appViewModel.deleteCar(carIdToDelete)
-                                        screen = 0*/
-                                    }
-
-                                    3 -> {
-                                        appViewModel.updateCar(
-                                            Car(
-                                                id = carIdToEdit,
-                                                registrationNumber = numberPlate,
-                                                manufacturer = manufacturer,
-                                                model = model
-                                            )
-                                        )
-                                        screen = 0
-                                    }
-                                }
-                            },
-                            button2Label = when (screen) {
-                                0 -> stringResource(R.string.manage_vehicle)
-                                else -> null
-                            },
-                            button2Enabled = when (screen) {
-                                0 -> appUiState.cars.isNotEmpty()
-                                else -> true
-                            },
-                            onButton2Clicked = {
-                                when (screen) {
-                                    0 -> toolVisible = !toolVisible
-                                }
-                            }
-                        ) { mod ->
-                            if (screen == -1) {
-                                MyDialogText(
-                                    text = "Cannot delete $carNameToDelete as it is in use.\n\nFind and replace all tracks using this car first.",
-                                    modifier = mod
-                                )
-                            }
-                            if (screen == 0) {
-                                MyDialogSelectableList(
-                                    items = appUiState.cars,
-                                    onItemSelected = {
-                                        if (!appUiState.isUpdatingCarOrMode) {
-                                            appViewModel.saveCar(it as Car)
-                                            appViewModel.hideCarDialog()
-                                        } else {
-                                            appViewModel.updateTrackCarIdById(
-                                                appUiState.updatingTrackId,
-                                                (it as Car).id
-                                            )
-                                            appViewModel.hideCarDialog()
-                                        }
-                                    },
-                                    modifier = mod,
-                                    selectedItem = if (!appUiState.isUpdatingCarOrMode)
-                                        appUiState.carSelected
-                                    else
-                                        appUiState.updatingCarOrModeSelected as Car
-                                ) {
-                                    AnimatedVisibility(
-                                        visible = toolVisible
-                                    ) {
-                                        Row {
-                                            IconButton(
-                                                onClick = {
-                                                    carIdToDelete = it.id
-                                                    carNameToDelete = it.getDisplayName()
-                                                    screen = 2
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Delete,
-                                                    contentDescription = String.format(
-                                                        stringResource(R.string.delete_item),
-                                                        it.getDisplayName()
-                                                    ),
-                                                    tint = MaterialTheme.colorScheme.error
-                                                )
-                                            }
-                                            IconButton(
-                                                onClick = {
-                                                    carIdToEdit = it.id
-                                                    manufacturer = (it as Car).manufacturer
-                                                    model = it.model
-                                                    numberPlate = it.registrationNumber
-                                                    screen = 3
-                                                }
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Filled.Edit,
-                                                    contentDescription = String.format(
-                                                        stringResource(R.string.edit_item),
-                                                        it.getDisplayName()
-                                                    )
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            } else if (screen == 1 || screen == 3) {
-                                val focusRequester = remember { FocusRequester() }
-                                val textFieldValue =
-                                    remember {
-                                        mutableStateOf(
-                                            TextFieldValue(
-                                                manufacturer,
-                                                TextRange(manufacturer.length)
-                                            )
-                                        )
-                                    }
-
-                                LaunchedEffect(Unit) {
-                                    if (screen == 1) {
-                                        focusRequester.requestFocus()
-                                    }
-                                }
-
-                                LazyColumn(
-                                    modifier = mod
-                                ) {
-                                    item {
-                                        OutlinedTextField(
-                                            value = textFieldValue.value,
-                                            onValueChange = {
-                                                textFieldValue.value = it.copy(it.text.trimStart())
-                                                manufacturer = textFieldValue.value.text
-                                            },
-                                            keyboardOptions = KeyboardOptions(
-                                                capitalization = KeyboardCapitalization.Words,
-                                                imeAction = ImeAction.Next
-                                            ),
-                                            label = {
-                                                Text(
-                                                    text = stringResource(R.string.manufacturer),
-                                                    fontFamily = NotoSans
-                                                )
-                                            },
-                                            shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
-                                            singleLine = true,
-                                            modifier = Modifier
-                                                .padding(vertical = dimensionResource(R.dimen.big_button_separation))
-                                                .focusRequester(focusRequester)
-                                        )
-                                        OutlinedTextField(
-                                            value = model,
-                                            onValueChange = { model = it.trimStart() },
-                                            keyboardOptions = KeyboardOptions(
-                                                capitalization = KeyboardCapitalization.Words,
-                                                imeAction = ImeAction.Next
-                                            ),
-                                            label = {
-                                                Text(
-                                                    text = stringResource(R.string.model),
-                                                    fontFamily = NotoSans
-                                                )
-                                            },
-                                            shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
-                                            singleLine = true,
-                                            modifier = Modifier
-                                                .padding(vertical = dimensionResource(R.dimen.big_button_separation))
-                                        )
-                                        OutlinedTextField(
-                                            value = numberPlate,
-                                            onValueChange = { numberPlate = it.trimStart() },
-                                            keyboardOptions = KeyboardOptions(
-                                                capitalization = KeyboardCapitalization.Characters,
-                                                imeAction = ImeAction.Done
-                                            ),
-                                            label = {
-                                                Text(
-                                                    text = stringResource(R.string.number_plate),
-                                                    fontFamily = NotoSans
-                                                )
-                                            },
-                                            shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
-                                            singleLine = true,
-                                            modifier = Modifier
-                                                .padding(vertical = dimensionResource(R.dimen.big_button_separation))
-                                        )
-                                    }
-                                }
-                            } else if (screen == 2) {
-                                MyDialogText(
-                                    text = "Confirm delete $carNameToDelete?",
-                                    modifier = mod
-                                )
-                            }
-                        }
-                    }
-
-                    if (appUiState.modeExpanded) {
-                        MyDialog(
-                            title = if (!appUiState.isUpdatingCarOrMode) stringResource(R.string.choose_mode) else "Update Mode",
-                            onDismissRequest = { appViewModel.hideModeDialog() }
-                        ) { mod ->
-                            MyDialogSelectableList(
-                                items = TripMode.entries,
-                                onItemSelected = {
-                                    if (!appUiState.isUpdatingCarOrMode) {
-                                        appViewModel.saveMode(it as TripMode)
-                                        appViewModel.hideModeDialog()
-                                    } else {
-                                        appViewModel.updateTrackTypeById(
-                                            appUiState.updatingTrackId,
-                                            it as TripMode
-                                        )
-                                        appViewModel.hideModeDialog()
-                                    }
-                                },
-                                modifier = mod,
-                                selectedItem = if (!appUiState.isUpdatingCarOrMode)
-                                    appUiState.modeSelected
-                                else
-                                    appUiState.updatingCarOrModeSelected as TripMode
-                            ) {}
-                        }
-                    }
-
-                    if (appUiState.deleteTripExpanded) {
-                        MyDialog(
-                            title = "Delete Trip",
-                            onDismissRequest = { appViewModel.hideDeleteTripDialog() },
-                            button1Label = stringResource(R.string.delete),
-                            button1Color = MaterialTheme.colorScheme.error,
-                            onButton1Clicked = {
-                                appViewModel.deleteTrip(appUiState.tripIdToDelete)
-                                appViewModel.hideDeleteTripDialog()
-
-                                if (navController.currentBackStackEntry?.destination?.route == yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL.name + "/{tripId}") {
-                                    navController.popBackStack()
-                                    appUiState.currentPage = yong.jianwen.heatmap.CurrentPage.HOME
-                                }
-                            }
-                        ) { mod ->
-                            Text(
-                                text = "Confirm delete trip ID ${appUiState.tripIdToDelete}?",
-                                fontFamily = NotoSans,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-                    }
-
-                    NavHost(
-                        navController = navController,
-                        startDestination = yong.jianwen.heatmap.CurrentPage.HOME.name
-                    ) {
-                        composable(
-                            route = yong.jianwen.heatmap.CurrentPage.HOME.name,
-                            exitTransition = {
-                                return@composable slideOutOfContainer(
-                                    AnimatedContentTransitionScope.SlideDirection.Start,
-                                    tween(700)
-//                                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
-                                )
-                            },
-                            popEnterTransition = {
-                                return@composable slideIntoContainer(
-                                    AnimatedContentTransitionScope.SlideDirection.End,
-                                    tween(700)
-//                                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
-                                )
-                            }
-                        ) {
-                            appViewModel.editTrack(false)
-
-                            TripListScreen(
-                                uiState = appUiState,
-                                windowSize = windowSize.widthSizeClass,
-                                onCarSelected = { appViewModel.saveCar(it) },
-                                onModeSelected = { appViewModel.saveMode(it) },
-                                onAddNewCar = { appViewModel.addNewCar(it) },
-                                onDeleteCar = { /*appViewModel.deleteCar(it)*/ },
-                                onClearCar = { appViewModel.clearCar() },
-                                onUpdateCar = { appViewModel.updateCar(it) },
-                                onStartNewTrip = {
-                                    appViewModel.startNewTrip(
-                                        NewTripInfo(
-                                            car = appUiState.carSelected!!,
-                                            tripMode = appUiState.modeSelected!!,
-                                            tripName = getString(R.string.default_trip_name),
-                                            trackName = getString(R.string.default_track_name),
-                                            tripId = -1
-                                        )
-                                    )
-                                    startService(intent)
-                                },
-                                onPauseTrip = {
-                                    appViewModel.pauseTrip()
-                                    stopService(intent)
-                                },
-                                onContinueTrip = {
-                                    appViewModel.continueTrip(
-                                        NewTripInfo(
-                                            car = appUiState.carSelected!!,
-                                            tripMode = appUiState.modeSelected!!,
-                                            tripName = getString(R.string.default_trip_name),
-                                            trackName = getString(R.string.default_track_name),
-                                            tripId = it
-                                        )
-                                    )
-                                    startService(intent)
-                                },
-                                onEndTrip = {
-                                    appViewModel.endTrip()
-                                    stopService(intent)
-                                },
-                                onDeleteTrip = {
-                                    appViewModel.deleteTrip(it)
-                                    appViewModel.hideDeleteTripDialog()
-                                },
-                                onCardClicked = {
-                                    if (navController.currentBackStackEntry?.destination?.route == yong.jianwen.heatmap.CurrentPage.HOME.name) {
-                                        navController.navigate(
-                                            yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL.name + "/$it"
-                                        )
-                                        appUiState.currentPage = yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL
-                                    }
-                                },
-                                onDeleteClicked = { appViewModel.showDeleteTripDialog(it) },
-                                onDeleteDismissed = { appViewModel.hideDeleteTripDialog() },
-                                onChooseVehicleClicked = { appViewModel.showCarDialog() },
-                                onChooseVehicleDismissed = { appViewModel.hideCarDialog() },
-                                onChooseModeClicked = { appViewModel.showModeDialog() },
-                                onChooseModeDismissed = { appViewModel.hideModeDialog() },
-                                onMoreClicked = { appViewModel.showMoreMenu() },
-                                onMoreDismissed = { appViewModel.hideMoreMenu() },
-                                onMoreItem1Clicked = { mapExpanded = true },
-                                onExportData = { },
-                                onImportData = { },
-                                modifier = Modifier,
-                                onGenerateGPX = { appViewModel.generateGPX() }
-                            )
-                        }
-
-                        val tripIdArgument = "tripId"
-                        composable(
-                            route = yong.jianwen.heatmap.CurrentPage.TRIP_DETAIL.name + "/{$tripIdArgument}",
-                            arguments = listOf(
-                                navArgument(tripIdArgument) { type = NavType.StringType }
-                            ),
-                            enterTransition = {
-                                return@composable slideIntoContainer(
-                                    AnimatedContentTransitionScope.SlideDirection.Start,
-                                    tween(700)
-//                                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
-                                )
-                            },
-                            popExitTransition = {
-                                return@composable slideOutOfContainer(
-                                    AnimatedContentTransitionScope.SlideDirection.End,
-                                    tween(700)
-//                                    spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
-                                )
-                            }
-                        ) { it ->
-                            val tripId = it.arguments?.getString(tripIdArgument)?.toLong() ?: error(
-                                "$tripIdArgument cannot be empty"
-                            )
-                            val tripWithTracks by appViewModel.getTripWithTracksById(tripId)
-                                .collectAsState(
-                                    TripWithTracks(
-                                        trip = Trip(
-                                            id = 0,
-                                            name = "",
-                                            start = "",
-                                            end = ""
-                                        ),
-                                        tracks = emptyList()
-                                    )
-                                )
-
-                            TripDetailScreen(
-                                uiState = appUiState,
-                                _tripWithTracks = tripWithTracks,
-                                onTripNameClicked = {
-
-                                },
-                                onTrackPointClicked = {
-                                    val cm =
-                                        getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                                    val data = ClipData.newPlainText("Track Point", it)
-                                    cm.setPrimaryClip(data)
-                                },
-                                onPauseTrip = {
-                                    appViewModel.pauseTrip()
-                                    stopService(intent)
-                                },
-                                onContinueTrip = {
-                                    appViewModel.continueTrip(
-                                        NewTripInfo(
-                                            car = appUiState.carSelected!!,
-                                            tripMode = appUiState.modeSelected!!,
-                                            tripName = getString(R.string.default_trip_name),
-                                            trackName = getString(R.string.default_track_name),
-                                            tripId = it
-                                        )
-                                    )
-                                    startService(intent)
-                                },
-                                onEndTrip = {
-                                    appViewModel.endTrip()
-                                    stopService(intent)
-                                },
-                                onUpdateTrip = {
-                                    appViewModel.updateTripNameById(
-                                        it.id,
-                                        it.name
-                                    )
-                                },
-                                onUpdateTrack = {
-                                    appViewModel.updateTrackNameById(
-                                        it.id,
-                                        it.name
-                                    )
-                                },
-                                onDeleteClicked = { appViewModel.showDeleteTripDialog(it) },
-                                onDeleteDismissed = { appViewModel.hideDeleteTripDialog() },
-                                onChooseVehicleClicked = {
-                                    appViewModel.editTrack(
-                                        true,
-                                        appUiState.cars.first { car -> car.id == it.carId },
-                                        it.id
-                                    )
-                                    appViewModel.showCarDialog()
-                                },
-                                onChooseVehicleDismissed = { appViewModel.hideCarDialog() },
-                                onChooseModeClicked = {
-                                    appViewModel.editTrack(
-                                        true,
-                                        TripMode.entries.first { mode -> mode.getDisplayName() == it.type },
-                                        it.id
-                                    )
-                                    appViewModel.showModeDialog()
-
-                                },
-                                onChooseModeDismissed = { appViewModel.hideModeDialog() },
-                                onBack = { onBack() },
-                                onMoreClicked = { appViewModel.showMoreMenu() },
-                                onMoreDismissed = { appViewModel.hideMoreMenu() },
-                                onMoreItem1Clicked = {
-                                    /*appViewModel.generateGPXByTripId(it)*/
-                                    GlobalScope.launch(Dispatchers.Main) {
-                                        val res = appViewModel.generateGPXByTripId(it)
-                                        val cm =
-                                            getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                                        val data = ClipData.newPlainText(
-                                            "GPX for trip ID $it",
-                                            res
-                                        )
-                                        cm.setPrimaryClip(data)
-                                        Toast.makeText(
-                                            this@MainActivity,
-                                            "GPX Copied - ${res}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                },
-                                modifier = Modifier
-                            )
-                        }
-                    }
-                }
+                HeatMapApp(
+                    context = this
+                )
             }
         }
 
@@ -849,4 +138,531 @@ class MainActivity : ComponentActivity() {
             )
         )
     }
+}
+
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+@Composable
+fun HeatMapApp(context: Context) {
+    Box(
+//        modifier = Modifier.padding(0.dp)
+    ) {
+//    Column(
+//        verticalArrangement = Arrangement.spacedBy(0.dp),
+//        modifier = Modifier.fillMaxHeight()
+//    ) {
+        val appViewModel: AppViewModel = viewModel(factory = AppViewModel.factory)
+        val appUiState by appViewModel.uiState.collectAsState()
+
+        val navController = rememberNavController()
+
+        val intent = Intent(context, LocationService::class.java)
+        /*var bottomBarVisible by remember { mutableStateOf(true) }*/
+
+        val tripLazyListState = rememberLazyListState()
+        val coroutineScope = rememberCoroutineScope()
+
+        var showDialog by rememberSaveable { mutableStateOf(false) }
+        var showAnimatedDialog by remember { mutableStateOf(false) }
+
+        LaunchedEffect(showDialog) {
+            if (showDialog) {
+                showAnimatedDialog = true
+            }
+        }
+
+        if (showAnimatedDialog) {
+            Dialog(
+                onDismissRequest = { showDialog = false },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false
+                )
+            ) {
+                val dialogWindow = getDialogWindow()
+
+                SideEffect {
+                    dialogWindow.let { window ->
+                        window?.setDimAmount(0f)
+                        window?.setWindowAnimations(-1)
+                    }
+                }
+
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    var animateIn by remember { mutableStateOf(false) }
+                    LaunchedEffect(Unit) { animateIn = true }
+                    AnimatedVisibility(
+                        visible = animateIn && showDialog,
+                        enter = fadeIn(),
+                        exit = fadeOut(),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .pointerInput(Unit) { detectTapGestures { showDialog = false } }
+                                .background(Color.Black.copy(alpha = .56f))
+                                .fillMaxSize()
+                        )
+                    }
+                    AnimatedVisibility(
+                        visible = animateIn && showDialog,
+                        enter = fadeIn(spring(stiffness = Spring.StiffnessHigh)) + scaleIn(
+                            initialScale = .8f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow
+                            )
+                        ),
+                        exit = slideOutVertically { it / 8 } + fadeOut() + scaleOut(targetScale = .95f)
+                        /*enter = slideInVertically(
+                            initialOffsetY = { 4000 }
+                        ) + expandVertically(
+                            expandFrom = Alignment.Bottom
+                        ) + scaleIn(
+                            transformOrigin = TransformOrigin(0.5f, 0f)
+                        ) + fadeIn(
+                            initialAlpha = 0f
+                        ),
+                        exit = slideOutVertically(
+                            targetOffsetY = { 40 }
+                        ) + shrinkVertically(
+                            shrinkTowards = Alignment.CenterVertically
+                        ) + scaleOut(
+                            transformOrigin = TransformOrigin(0.5f, 1f)
+                        ) + fadeOut()*/
+                    ) {
+                        Box(
+                            Modifier
+                                .pointerInput(Unit) { detectTapGestures { } }
+                                .shadow(8.dp, shape = RoundedCornerShape(16.dp))
+                                .width(300.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.surface,
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Card(
+                                shape = RoundedCornerShape(32.dp),
+                                modifier = Modifier.padding(16.dp)
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = "Hello",
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                    Text(
+                                        text = "World",
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+
+                        DisposableEffect(Unit) {
+                            onDispose {
+                                showAnimatedDialog = false
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Surface(
+            modifier = Modifier
+//                .weight(1f)
+        ) {
+
+            val onBack = {
+                appUiState.currentPage = CurrentPage.HOME
+                navController.navigateUp()
+                appViewModel.showBottomBar()
+            }
+
+            val windowSize = calculateWindowSizeClass(context as MainActivity)
+
+            if (appUiState.alertExpanded) {
+                MyDialog(
+                    title = "Error",
+                    onDismissRequest = { appViewModel.hideAlertDialog() },
+                    button1Label = "Dismiss",
+                    onButton1Clicked = {
+                        appViewModel.hideAlertDialog()
+                    }
+                ) {}
+            }
+
+            var mapExpanded by rememberSaveable { mutableStateOf(false) }
+
+            if (mapExpanded) {
+                MapDialog(
+                    uiState = appUiState,
+                    onDismissRequest = { mapExpanded = false },
+                    windowSize = windowSize.widthSizeClass
+                )
+            }
+
+            if (appUiState.carExpanded) {
+                CarDialog(
+                    uiState = appUiState,
+                    onDismissRequestAtScreen0 = { appViewModel.hideCarDialog() },
+                    onAddNewCar = { appViewModel.createCar(it) },
+                    onDeleteCar = { appViewModel.deleteCar(it) },
+                    onUpdateCar = { appViewModel.updateCar(it) },
+                    onItemSelected = {
+                        if (!appUiState.isUpdatingCarOrMode) {
+                            appViewModel.saveCarSelected(it)
+                            appViewModel.hideCarDialog()
+                        } else {
+                            appViewModel.updateTrackCarIdById(
+                                appUiState.updatingTrackId,
+                                it.id
+                            )
+                            appViewModel.hideCarDialog()
+                        }
+                    }
+                )
+            }
+
+            if (appUiState.modeExpanded) {
+                ModeDialog(
+                    uiState = appUiState,
+                    onDismissRequest = { appViewModel.hideModeDialog() },
+                    onItemSelected = {
+                        if (!appUiState.isUpdatingCarOrMode) {
+                            appViewModel.saveMode(it as TripMode)
+                            appViewModel.hideModeDialog()
+                        } else {
+                            appViewModel.updateTrackTypeById(
+                                appUiState.updatingTrackId,
+                                it as TripMode
+                            )
+                            appViewModel.hideModeDialog()
+                        }
+                    }
+                )
+            }
+
+            if (appUiState.deleteTripExpanded) {
+                DeleteTripDialog(
+                    uiState = appUiState,
+                    onDismissRequest = { appViewModel.hideDeleteTripDialog() },
+                    onButton1Clicked = {
+                        appViewModel.deleteTrip(appUiState.tripIdToDelete)
+                        appViewModel.hideDeleteTripDialog()
+
+                        if (navController.currentBackStackEntry?.destination?.route == CurrentPage.TRIP_DETAIL.name + "/{tripId}") {
+                            navController.popBackStack()
+                            appUiState.currentPage = CurrentPage.HOME
+                        }
+                    }
+                )
+            }
+
+            NavHost(
+                navController = navController,
+                startDestination = CurrentPage.HOME.name
+            ) {
+                composable(
+                    route = CurrentPage.HOME.name,
+                    exitTransition = {
+                        return@composable slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    },
+                    popEnterTransition = {
+                        return@composable slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    }
+                ) {
+                    appViewModel.editTrack(false)
+
+                    TripListScreen(
+                        uiState = appUiState,
+                        windowSize = windowSize.widthSizeClass,
+                        onPauseTrip = {
+                            appViewModel.pauseTrip()
+                            context.stopService(intent)
+                        },
+                        onContinueTrip = {
+                            appViewModel.continueTrip(
+                                NewTripInfo(
+                                    car = appUiState.carSelected!!,
+                                    tripMode = appUiState.modeSelected!!,
+                                    tripName = context.getString(R.string.default_trip_name),
+                                    trackName = context.getString(R.string.default_track_name),
+                                    tripId = it
+                                )
+                            )
+                            context.startService(intent)
+                            coroutineScope.launch {
+                                if (tripLazyListState.firstVisibleItemIndex == 0) {
+                                    delay(50)
+                                }
+                                tripLazyListState.animateScrollToItem(index = 0)
+                            }
+                        },
+                        onEndTrip = {
+                            appViewModel.endTrip()
+                            context.stopService(intent)
+                            coroutineScope.launch {
+                                if (tripLazyListState.firstVisibleItemIndex == 0) {
+                                    delay(50)
+                                }
+                                tripLazyListState.animateScrollToItem(index = 0)
+                            }
+                        },
+                        onCardClicked = {
+                            if (navController.currentBackStackEntry?.destination?.route == CurrentPage.HOME.name) {
+                                navController.navigate(
+                                    CurrentPage.TRIP_DETAIL.name + "/$it"
+                                )
+                                appUiState.currentPage = CurrentPage.TRIP_DETAIL
+                                appViewModel.hideBottomBar()
+                            }
+                        },
+                        onDeleteClicked = { appViewModel.showDeleteTripDialog(it) },
+                        onMoreClicked = { appViewModel.showMoreMenu() },
+                        onMoreDismissed = { appViewModel.hideMoreMenu() },
+                        onMoreItem1Clicked = {
+                            appViewModel.hideMoreMenu()
+//                            mapExpanded = true
+                            showDialog = true
+                        },
+                        tripLazyListState = tripLazyListState
+                    )
+                }
+
+                val tripIdArgument = "tripId"
+                composable(
+                    route = CurrentPage.TRIP_DETAIL.name + "/{$tripIdArgument}",
+                    arguments = listOf(
+                        navArgument(tripIdArgument) { type = NavType.StringType }
+                    ),
+                    enterTransition = {
+                        return@composable slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    },
+                    popExitTransition = {
+                        return@composable slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    }
+                ) { it ->
+                    val tripId = it.arguments?.getString(tripIdArgument)?.toLong() ?: error(
+                        "$tripIdArgument cannot be empty"
+                    )
+                    val tripWithTracks by appViewModel.getTripWithTracksById(tripId)
+                        .collectAsState(
+                            TripWithTracks(
+                                trip = Trip(
+                                    id = 0,
+                                    name = "",
+                                    start = "",
+                                    end = ""
+                                ),
+                                tracks = emptyList()
+                            )
+                        )
+
+                    TripDetailScreen(
+                        uiState = appUiState,
+                        tripWithTracksOrNothing = tripWithTracks,
+                        onTrackPointClicked = {
+                            val cm =
+                                context.getSystemService(Activity.CLIPBOARD_SERVICE) as ClipboardManager
+                            val data = ClipData.newPlainText("Track Point", it)
+                            cm.setPrimaryClip(data)
+                        },
+                        onPauseTrip = {
+                            appViewModel.pauseTrip()
+                            context.stopService(intent)
+                        },
+                        onContinueTrip = {
+                            appViewModel.continueTrip(
+                                NewTripInfo(
+                                    car = appUiState.carSelected!!,
+                                    tripMode = appUiState.modeSelected!!,
+                                    tripName = context.getString(R.string.default_trip_name),
+                                    trackName = context.getString(R.string.default_track_name),
+                                    tripId = it
+                                )
+                            )
+                            context.startService(intent)
+                        },
+                        onEndTrip = {
+                            appViewModel.endTrip()
+                            context.stopService(intent)
+                        },
+                        onUpdateTrip = {
+                            appViewModel.updateTripNameById(
+                                it.id,
+                                it.name
+                            )
+                        },
+                        onUpdateTrack = {
+                            appViewModel.updateTrackNameById(
+                                it.id,
+                                it.name
+                            )
+                        },
+                        onDeleteClicked = { appViewModel.showDeleteTripDialog(it) },
+                        onChooseVehicleClicked = {
+                            appViewModel.editTrack(
+                                true,
+                                appUiState.cars.first { car -> car.id == it.carId },
+                                it.id
+                            )
+                            appViewModel.showCarDialog()
+                        },
+                        onChooseModeClicked = {
+                            appViewModel.editTrack(
+                                true,
+                                TripMode.entries.first { mode -> mode.getDisplayName() == it.type },
+                                it.id
+                            )
+                            appViewModel.showModeDialog()
+                        },
+                        onBack = { onBack() },
+                        onMoreClicked = { appViewModel.showMoreMenu() },
+                        onMoreDismissed = { appViewModel.hideMoreMenu() },
+                        onMoreItem1Clicked = {
+                            GlobalScope.launch(Dispatchers.Main) {
+                                val res = appViewModel.generateGPXByTripId(it)
+                                val cm =
+                                    context.getSystemService(Activity.CLIPBOARD_SERVICE) as ClipboardManager
+                                val data = ClipData.newPlainText(
+                                    "GPX for trip ID $it",
+                                    res
+                                )
+                                cm.setPrimaryClip(data)
+                                Toast.makeText(
+                                    context,
+                                    "GPX Copied - ${res}",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    )
+                }
+            }
+        }
+        AnimatedVisibility(
+            visible = appUiState.bottomBarVisible,
+            enter = slideInVertically(
+                initialOffsetY = { -40 }
+            ) + expandVertically(
+                expandFrom = Alignment.Top
+            )/* + scaleIn(
+                transformOrigin = TransformOrigin(0.5f, 0f)
+            )*//* + fadeIn(
+                initialAlpha = 0.3f
+            )*/,
+            exit = slideOutVertically(
+                targetOffsetY = { 40 },
+                animationSpec = tween(
+                    durationMillis = 500,
+                    delayMillis = 500
+                )//, easing = FastOutLinearInEasing)
+            ) + shrinkVertically(
+                shrinkTowards = Alignment.CenterVertically,
+                animationSpec = tween(
+                    durationMillis = 500,
+                    delayMillis = 500
+                )//, easing = FastOutLinearInEasing)
+            )/* + scaleOut(
+                transformOrigin = TransformOrigin(0.5f, 1f),
+                animationSpec = tween(durationMillis = 500, delayMillis = 500)//, easing = FastOutLinearInEasing)
+            ) + fadeOut(
+                animationSpec = tween(durationMillis = 450, delayMillis = 500)//, easing = LinearOutSlowInEasing)
+            )*/,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+        ) {
+            BottomBar(
+                appViewModel = appViewModel,
+                uiState = appUiState,
+                navController = navController,
+                context = context,
+                intent = intent,
+                tripLazyListState = tripLazyListState
+            )
+        }
+    }
+}
+
+@Composable
+fun AnimatedTransitionDialog(
+    onDismissRequest: () -> Unit,
+    contentAlignment: Alignment = Alignment.Center,
+    animateTrigger: Boolean,
+    content: @Composable () -> Unit,
+) {
+    /*val animateTrigger = remember { mutableStateOf(false) }
+    LaunchedEffect(key1 = Unit) {
+        launch {
+            delay(500)
+            animateTrigger.value = true
+        }
+    }*/
+    if (animateTrigger)
+        Dialog(onDismissRequest = onDismissRequest) {
+            val dialogWindow = getDialogWindow()
+
+            SideEffect {
+                dialogWindow.let { window ->
+                    window?.setDimAmount(0f)
+                    window?.setWindowAnimations(-1)
+                }
+            }
+
+            Box(
+                contentAlignment = contentAlignment,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                AnimatedScaleInTransition(visible = animateTrigger) {
+                    content()
+                }
+            }
+        }
+}
+
+@ReadOnlyComposable
+@Composable
+fun getDialogWindow(): Window? = (LocalView.current.parent as? DialogWindowProvider)?.window
+
+
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+internal fun AnimatedScaleInTransition(
+    visible: Boolean,
+    content: @Composable AnimatedVisibilityScope.() -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = scaleIn(
+            animationSpec = tween(500.toInt())
+        ),
+        exit = scaleOut(
+            animationSpec = tween(500.toInt())
+        ),
+        content = content
+    )
 }

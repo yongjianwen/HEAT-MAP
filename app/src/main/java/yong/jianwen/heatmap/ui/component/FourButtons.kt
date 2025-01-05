@@ -9,12 +9,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.data.entity.Trip
-import yong.jianwen.heatmap.ui.AppUiState
+import yong.jianwen.heatmap.ui.UiState
 import yong.jianwen.heatmap.ui.theme.NotoSans
 
 @Composable
 fun FourButtons(
-    uiState: AppUiState,
+    uiState: UiState,
     trip: Trip,
     onContinueTrip: (tripId: Long) -> Unit,
     onPauseTrip: () -> Unit,

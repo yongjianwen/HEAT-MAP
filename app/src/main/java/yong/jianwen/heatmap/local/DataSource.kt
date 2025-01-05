@@ -8,7 +8,7 @@ import yong.jianwen.heatmap.data.entity.TrackSegmentWithTrackPoints
 import yong.jianwen.heatmap.data.entity.TrackWithTrackSegments
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
-import yong.jianwen.heatmap.data.helper.AdditionalTripInfo
+import yong.jianwen.heatmap.data.helper.CarAndModeForTrip
 
 class DataSource {
 
@@ -219,7 +219,7 @@ class DataSource {
         )
 
         private val chips = listOf(
-            AdditionalTripInfo(1, "Driving", mockCars[2])
+            CarAndModeForTrip(1, "Driving", mockCars[2])
         )
 
         fun getMockCars() = mockCars

@@ -2,7 +2,7 @@ package yong.jianwen.heatmap.data.repository
 
 import yong.jianwen.heatmap.data.dao.TripDao
 import yong.jianwen.heatmap.data.entity.Trip
-import yong.jianwen.heatmap.data.helper.AdditionalTripInfo
+import yong.jianwen.heatmap.data.helper.CarAndModeForTrip
 import kotlinx.coroutines.flow.Flow
 
 class TripRepository(
@@ -16,8 +16,8 @@ class TripRepository(
         return tripDao.getAllSuspend()
     }
 
-    fun getAdditionalTripInfo(): Flow<List<AdditionalTripInfo>> {
-        return tripDao.getAdditionalTripInfo()
+    fun getCarsAndModesForEachTrip(): Flow<List<CarAndModeForTrip>> {
+        return tripDao.getCarsAndModesForEachTrip()
     }
 
     suspend fun insert(trip: Trip): Long {
