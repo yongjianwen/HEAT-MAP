@@ -1,9 +1,10 @@
 package yong.jianwen.heatmap.data.repository
 
+import kotlinx.coroutines.flow.Flow
 import yong.jianwen.heatmap.data.dao.TripDao
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.helper.CarAndModeForTrip
-import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
 class TripRepository(
     private val tripDao: TripDao
@@ -34,6 +35,12 @@ class TripRepository(
 
     suspend fun updateTripEndById(id: Long, end: String) {
         return tripDao.updateTripEndById(id, end)
+    }
+
+    suspend fun updateAllTripUUIDs(tripIds: List<Long>) {
+        for (tripId in tripIds) {
+            tripDao.updateTripUUIDById(tripId, UUID.randomUUID().toString())
+        }
     }
 
     suspend fun delete(id: Long) {

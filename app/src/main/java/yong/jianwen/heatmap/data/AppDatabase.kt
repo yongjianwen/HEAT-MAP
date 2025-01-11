@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import yong.jianwen.heatmap.data.dao.CarDao
@@ -17,12 +18,14 @@ import yong.jianwen.heatmap.data.entity.Track
 import yong.jianwen.heatmap.data.entity.TrackPoint
 import yong.jianwen.heatmap.data.entity.TrackSegment
 import yong.jianwen.heatmap.data.entity.Trip
+import yong.jianwen.heatmap.data.helper.UUIDConverter
 
 @Database(
     entities = [Car::class, Trip::class, Track::class, TrackSegment::class, TrackPoint::class],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
+@TypeConverters(UUIDConverter::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun carDao(): CarDao
     abstract fun tripDao(): TripDao
@@ -38,17 +41,45 @@ abstract class AppDatabase : RoomDatabase() {
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "heatmap_database")
-                    .createFromAsset("database/20250101_heatmap_database_v5.db")
+                    .createFromAsset("database/20250110_heatmap_database_v5.db")
                     /*.fallbackToDestructiveMigration()*/
                     .addMigrations(migration_4_5)
+                    .addMigrations(migration_5_6)
                     .build()
                     .also { INSTANCE = it }
             }
         }
 
+        private val migration_5_6: Migration = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE `trip_temp` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `name` TEXT NOT NULL,
+                        `start` TEXT NOT NULL,
+                        `end` TEXT NOT NULL,
+                        `uuid` TEXT NOT NULL
+                    );
+                """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    INSERT INTO trip_temp (id, name, start, end, uuid)
+                    SELECT id, name, start, end, "f47e1d80-6156-402b-8f20-b55346beea3a" FROM trip
+                """.trimIndent()
+                )
+
+                db.execSQL("DROP TABLE trip")
+                db.execSQL("ALTER TABLE trip_temp RENAME TO trip")
+            }
+        }
+
         private val migration_4_5: Migration = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("""
+                db.execSQL(
+                    """
                     CREATE TABLE `track_temp` (
                         `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                         `trip_id` INTEGER NOT NULL,
@@ -61,12 +92,15 @@ abstract class AppDatabase : RoomDatabase() {
                         FOREIGN KEY(`trip_id`) REFERENCES `trip`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
                         FOREIGN KEY(`car_id`) REFERENCES `car`(`id`) ON UPDATE NO ACTION ON DELETE NO ACTION
                     );
-                """.trimIndent())
+                """.trimIndent()
+                )
 
-                db.execSQL("""
+                db.execSQL(
+                    """
                     INSERT INTO track_temp (id, trip_id, type, name, number, start, end, car_id)
                     SELECT id, trip_id, type, name, number, start, end, 1 FROM track
-                """.trimIndent())
+                """.trimIndent()
+                )
 
                 db.execSQL("DROP TABLE track")
                 db.execSQL("ALTER TABLE track_temp RENAME TO track")

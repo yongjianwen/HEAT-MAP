@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "track",
@@ -20,6 +21,7 @@ import androidx.room.PrimaryKey
         )
     ]
 )
+@Serializable
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "trip_id") val tripId: Long,

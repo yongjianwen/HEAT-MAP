@@ -26,4 +26,8 @@ class TrackPointRepository(
     suspend fun deleteByTripId(tripId: Long) {
         return trackPointDao.deleteByTripId(tripId)
     }
+
+    suspend fun deleteByTrackId(trackId: Long) {
+        return trackPointDao.deleteByTrackId(trackId)
+    }
 }

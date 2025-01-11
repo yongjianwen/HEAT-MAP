@@ -1,5 +1,6 @@
 package yong.jianwen.heatmap.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -13,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import yong.jianwen.heatmap.GPXGenerator
 import yong.jianwen.heatmap.HeatMapApplication
 import yong.jianwen.heatmap.data.Selectable
@@ -319,7 +322,7 @@ class AppViewModel(
     }
     //endregion
 
-    //region Update fields in TripDetailScreen
+    //region Update fields and delete Track in TripDetailScreen
     fun updateTripNameById(id: Long, tripName: String) {
         viewModelScope.launch {
             tripRepository.updateTripNameById(id, tripName)
@@ -341,6 +344,21 @@ class AppViewModel(
     fun updateTrackCarIdById(id: Long, carId: Int) {
         viewModelScope.launch {
             trackRepository.updateTrackCarIdById(id, carId)
+        }
+    }
+
+    fun deleteTrack(track: Track) {
+        viewModelScope.launch {
+            trackPointRepository.deleteByTrackId(track.id)
+        }
+        viewModelScope.launch {
+            trackSegmentRepository.deleteByTrackId(track.id)
+        }
+        viewModelScope.launch {
+            trackRepository.delete(track.id)
+        }
+        viewModelScope.launch {
+            trackRepository.cleanUpTrackNumberByTripId(track.tripId)
         }
     }
     //endregion
@@ -379,11 +397,19 @@ class AppViewModel(
     }
 
     fun showDeleteTripDialog(trip: Trip) {
-        _uiState.update { it.copy(tripIdToDelete = trip.id, deleteTripExpanded = true) }
+        _uiState.update { it.copy(tripToDelete = trip, deleteTripExpanded = true) }
     }
 
     fun hideDeleteTripDialog() {
-        _uiState.update { it.copy(tripIdToDelete = -1, deleteTripExpanded = false) }
+        _uiState.update { it.copy(tripToDelete = null, deleteTripExpanded = false) }
+    }
+
+    fun showDeleteTrackDialog(track: Track) {
+        _uiState.update { it.copy(trackToDelete = track, deleteTrackExpanded = true) }
+    }
+
+    fun hideDeleteTrackDialog() {
+        _uiState.update { it.copy(trackToDelete = null, deleteTrackExpanded = false) }
     }
 
     fun hideAlertDialog() {
@@ -402,6 +428,46 @@ class AppViewModel(
         }
         return res.await()
     }
+
+    //region Export and import data
+    fun exportData() {
+        viewModelScope.launch {
+            /*var trips: List<Trip> = listOf()
+            var tracks: List<Track> = listOf()
+            var trackSegments: List<TrackSegment> = listOf()
+            var trackPoints: List<TrackPoint> = listOf()
+
+            uiState.value.allTripsWithTracks.forEach { trip ->
+                trips = trips.plus(trip.trip)
+                trip.tracks.forEach { track ->
+                    tracks = tracks.plus(track.track)
+                    track.trackSegments.forEach { trackSegment ->
+                        trackSegments = trackSegments.plus(trackSegment.trackSegment)
+                        trackPoints = trackPoints.plus(trackSegment.trackPoints)
+                    }
+                }
+            }
+            Log.d(
+                "TEST",
+                "trip: $trips"
+            )*/
+
+            val jsonElements = uiState.value.allTripsWithTracks.map {
+                Json.encodeToJsonElement(TripWithTracks.serializer(), it)
+            }
+            val jsonArray = JsonArray(jsonElements)
+            // TODO: check whether UUID will be changed when updating trip fields
+        }
+    }
+
+    fun importData() {}
+
+    fun resetAllUUIDs() {
+        viewModelScope.launch {
+            tripRepository.updateAllTripUUIDs(uiState.value.allTripsWithTracks.map { it.trip.id })
+        }
+    }
+    //endregion
 
     companion object {
         val factory: ViewModelProvider.Factory = viewModelFactory {

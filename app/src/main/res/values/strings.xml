@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">HEAT MAP</string>
     <string name="trip_detail_screen_title">Trip Details</string>
+    <string name="map_screen_title">Map</string>
 
     <!-- Button labels -->
     <string name="back">Previous Screen</string>
@@ -25,6 +26,7 @@
     <string name="delete_item">Delete %s</string>
     <string name="expand_track">Expand track</string>
     <string name="done">Done</string>
+    <string name="clear_text">Clear Text</string>
 
     <!-- Text labels -->
     <string name="get_started_label">Choose vehicle and mode\nClick Start</string>
@@ -39,7 +41,9 @@
     <string name="edit_vehicle">Edit Vehicle</string>
     <string name="update_mode">Update Mode</string>
     <string name="delete_trip">Delete Trip</string>
+    <string name="delete_track">Delete Track</string>
     <string name="confirm_delete_trip">Delete trip ID %1$d?</string>
+    <string name="confirm_delete_track">Delete track ID %1$d?</string>
     <string name="update_vehicle">Update Vehicle</string>
     <string name="rename_trip">Rename Trip</string>
     <string name="rename_track">Rename Track</string>

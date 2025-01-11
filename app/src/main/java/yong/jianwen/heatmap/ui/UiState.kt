@@ -4,6 +4,8 @@ import yong.jianwen.heatmap.CurrentPage
 import yong.jianwen.heatmap.data.Selectable
 import yong.jianwen.heatmap.data.TripMode
 import yong.jianwen.heatmap.data.entity.Car
+import yong.jianwen.heatmap.data.entity.Track
+import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
 import yong.jianwen.heatmap.data.helper.CarAndModeForTrip
 
@@ -25,8 +27,13 @@ data class UiState(
     var carExpanded: Boolean = false,
     var modeExpanded: Boolean = false,
     var deleteTripExpanded: Boolean = false,
-    var tripIdToDelete: Long = -1,
+    var deleteTrackExpanded: Boolean = false,
     var alertExpanded: Boolean = false,
+
+//    var tripIdToDelete: Long = -1,
+    val tripToDelete: Trip? = null,
+//    var trackIdToDelete: Long = -1,
+    var trackToDelete: Track? = null,
 
     var isUpdatingCarOrMode: Boolean = false,
     var updatingTrackId: Long = -1,

@@ -3,6 +3,8 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     // Room
     id("com.google.devtools.ksp") version "1.9.0-1.0.13"
+    // Kotlin serialization
+    id("org.jetbrains.kotlin.plugin.serialization") version "1.9.10"
 }
 
 android {
@@ -49,6 +51,11 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // Language
+    /*androidResources {
+        generateLocaleConfig = true
+    }*/
 }
 
 dependencies {
@@ -78,6 +85,8 @@ dependencies {
     implementation(libs.mapbox.compose)
     // Window Size Class
     implementation(libs.androidx.window.size)
+    // Kotlin serialization
+    implementation(libs.kotlinx.json)
 
     /*testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -4,6 +4,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 
 @Entity(
     tableName = "track_point",
@@ -15,6 +16,7 @@ import androidx.room.PrimaryKey
         )
     ]
 )
+@Serializable
 data class TrackPoint(
     @PrimaryKey(autoGenerate = true) val id: Long,
     @ColumnInfo(name = "track_segment_id") val trackSegmentId: Long,

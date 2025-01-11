@@ -35,9 +35,24 @@ interface TrackDao {
     @Query("UPDATE track SET `end` = :end WHERE id = :id")
     suspend fun updateTrackEndById(id: Long, end: String)
 
-    @Delete
-    suspend fun delete(track: Track)
+    @Query("DELETE FROM track WHERE id = :id")
+    suspend fun delete(id: Long)
 
     @Query("DELETE FROM track WHERE trip_id = :tripId")
     suspend fun deleteByTripId(tripId: Long)
+
+    @Query("""
+        UPDATE track
+        SET number = (
+            SELECT COUNT() + 1
+            FROM (
+                SELECT DISTINCT id
+                FROM track t
+                WHERE id < track.id
+                AND trip_id = track.trip_id
+            )
+        )
+        WHERE trip_id = :tripId
+    """)
+    suspend fun cleanUpTrackNumberByTripId(tripId: Long)
 }

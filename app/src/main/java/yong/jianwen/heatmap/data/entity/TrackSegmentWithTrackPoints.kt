@@ -2,7 +2,9 @@ package yong.jianwen.heatmap.data.entity
 
 import androidx.room.Embedded
 import androidx.room.Relation
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class TrackSegmentWithTrackPoints(
     @Embedded val trackSegment: TrackSegment,
     @Relation(

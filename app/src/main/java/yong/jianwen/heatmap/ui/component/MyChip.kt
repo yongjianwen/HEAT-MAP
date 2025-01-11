@@ -167,7 +167,10 @@ fun TripDetailCompactPreview() {
             onMoreClicked = { },
             onMoreDismissed = { },
             onMoreItem1Clicked = { },
-            onBack = { }
+            onBack = { },
+//            onDeleteTrack = { },
+            onDeleteTrackClicked = { },
+            onMapClicked = { }
         )
     }
 }

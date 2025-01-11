@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -300,6 +302,20 @@ fun CarDialog(
                             },
                             shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
                             singleLine = true,
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        textFieldValue.value = textFieldValue.value.copy("")
+                                        manufacturer = ""
+                                    },
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Clear,
+                                        contentDescription = stringResource(R.string.clear_text)
+                                    )
+                                }
+                            },
                             modifier = Modifier
                                 .padding(vertical = dimensionResource(R.dimen.big_button_separation))
                                 .focusRequester(focusRequester)
@@ -319,6 +335,20 @@ fun CarDialog(
                             },
                             shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
                             singleLine = true,
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        textFieldValue.value = textFieldValue.value.copy("")
+                                        model = ""
+                                    },
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Clear,
+                                        contentDescription = stringResource(R.string.clear_text)
+                                    )
+                                }
+                            },
                             modifier = Modifier
                                 .padding(vertical = dimensionResource(R.dimen.big_button_separation))
                         )
@@ -337,6 +367,20 @@ fun CarDialog(
                             },
                             shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
                             singleLine = true,
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = {
+                                        textFieldValue.value = textFieldValue.value.copy("")
+                                        numberPlate = ""
+                                    },
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Clear,
+                                        contentDescription = stringResource(R.string.clear_text)
+                                    )
+                                }
+                            },
                             modifier = Modifier
                                 .padding(vertical = dimensionResource(R.dimen.big_button_separation))
                         )

@@ -20,7 +20,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,7 +63,10 @@ fun TripListScreen(
     onMoreClicked: () -> Unit,
     onMoreDismissed: () -> Unit,
     onMoreItem1Clicked: () -> Unit,
-    tripLazyListState: LazyListState
+    onMoreItem2Clicked: () -> Unit,
+    onMoreItem3Clicked: () -> Unit,
+    tripLazyListState: LazyListState,
+    onSpecialClicked: () -> Unit = { }
 ) {
     /*val lazyListState = rememberLazyListState()*/
     val coroutineScope = rememberCoroutineScope()
@@ -139,6 +141,39 @@ fun TripListScreen(
                         onClick = onMoreItem1Clicked
                     )
                     HorizontalDivider()
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.upload),
+                                contentDescription = "Export Data",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Export Data",
+                                fontFamily = NotoSans
+                            )
+                        },
+                        onClick = onMoreItem2Clicked
+                    )
+                    DropdownMenuItem(
+                        leadingIcon = {
+                            Icon(
+                                painter = painterResource(R.drawable.download),
+                                contentDescription = "Import Data",
+                                modifier = Modifier.size(24.dp)
+                            )
+                        },
+                        text = {
+                            Text(
+                                text = "Import Data",
+                                fontFamily = NotoSans
+                            )
+                        },
+                        onClick = onMoreItem3Clicked
+                    )
+                    HorizontalDivider()
                     val context = LocalContext.current
                     DropdownMenuItem(
                         leadingIcon = {
@@ -158,7 +193,7 @@ fun TripListScreen(
                                 fontFamily = NotoSans
                             )
                         },
-                        onClick = { }
+                        onClick = onSpecialClicked
                     )
                 }
             }
@@ -261,6 +296,8 @@ fun TripListCompactPreview() {
             onMoreClicked = { },
             onMoreDismissed = { },
             onMoreItem1Clicked = { },
+            onMoreItem2Clicked = { },
+            onMoreItem3Clicked = { },
             tripLazyListState = rememberLazyListState()
         )
     }

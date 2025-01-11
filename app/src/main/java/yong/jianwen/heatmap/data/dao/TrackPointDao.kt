@@ -32,4 +32,12 @@ interface TrackPointDao {
         )
     """)
     suspend fun deleteByTripId(tripId: Long)
+
+    @Query("""
+        DELETE FROM track_point
+        WHERE track_segment_id IN (
+            SELECT id FROM track_segment WHERE track_id = :trackId
+        )
+    """)
+    suspend fun deleteByTrackId(trackId: Long)
 }

@@ -1,7 +1,10 @@
 package yong.jianwen.heatmap.ui
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
+import android.os.VibrationEffect
+import android.os.VibratorManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,12 +29,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import yong.jianwen.heatmap.CurrentPage
@@ -42,6 +45,7 @@ import yong.jianwen.heatmap.ui.component.MyBottomBarButton
 import yong.jianwen.heatmap.ui.theme.CustomTheme
 import yong.jianwen.heatmap.ui.theme.NotoSans
 
+@SuppressLint("NewApi")
 @Composable
 fun BottomBar(
     appViewModel: AppViewModel,
@@ -52,6 +56,10 @@ fun BottomBar(
     tripLazyListState: LazyListState
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val vibratorManager =
+        context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+    val vibrator = vibratorManager.defaultVibrator
 
     Surface(
         modifier = Modifier
@@ -60,20 +68,12 @@ fun BottomBar(
                 shadowBlurRadius = dimensionResource(R.dimen.app_bar_shadow_elevation),
                 offsetY = -dimensionResource(R.dimen.app_bar_shadow_elevation)
             )
-//            .offset(y = 30.dp)
-//            .animateContentSize()
-//            .height()
     ) {
-        Column(
-//            modifier = Modifier.fillMaxHeight()
-        ) {
+        Column {
             if (uiState.newTripId != -1L) {
                 Row(
                     modifier = Modifier
                         .clickable {
-                            /*coroutineScope.launch {
-                                lazyListState.animateScrollToItem(0)
-                            }*/
                             if (navController.currentBackStackEntry?.destination?.route == CurrentPage.HOME.name) {
                                 navController.navigate(
                                     CurrentPage.TRIP_DETAIL.name + "/${uiState.newTripId}"
@@ -146,6 +146,9 @@ fun BottomBar(
                     MyBottomBarButton(
                         text = stringResource(R.string.start_trip),
                         onClicked = {
+                            vibrator.vibrate(
+                                VibrationEffect.createPredefined(VibrationEffect.EFFECT_CLICK)
+                            )
                             appViewModel.startTrip(
                                 NewTripInfo(
                                     car = uiState.carSelected!!,
@@ -163,7 +166,8 @@ fun BottomBar(
                                 tripLazyListState.animateScrollToItem(index = 0)
                             }
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        enabled = uiState.carSelected != null && uiState.modeSelected != null
                     )
                 } else {
                     if (!uiState.isPaused) {

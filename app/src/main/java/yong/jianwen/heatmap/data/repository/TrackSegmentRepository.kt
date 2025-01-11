@@ -26,4 +26,8 @@ class TrackSegmentRepository(
     suspend fun deleteByTripId(tripId: Long) {
         return trackSegmentDao.deleteByTripId(tripId)
     }
+
+    suspend fun deleteByTrackId(trackId: Long) {
+        return trackSegmentDao.deleteByTrackId(trackId)
+    }
 }

@@ -1,8 +1,18 @@
 package yong.jianwen.heatmap.ui
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeContent
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -23,6 +33,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.data.entity.TripWithTracks
 import yong.jianwen.heatmap.data.helper.UpdateTrack
@@ -138,6 +149,20 @@ fun RenameDialog(
                 },
                 shape = RoundedCornerShape(dimensionResource(R.dimen.card_high_corner_radius)),
                 maxLines = 5,
+                trailingIcon = {
+                    IconButton(
+                        onClick = {
+                            textFieldValue.value = textFieldValue.value.copy("")
+                            onValueChanged("")
+                        },
+                        modifier = Modifier.padding(end = 4.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Clear,
+                            contentDescription = stringResource(R.string.clear_text)
+                        )
+                    }
+                },
                 modifier = Modifier
                     .padding(vertical = dimensionResource(R.dimen.big_button_separation))
                     .focusRequester(focusRequester)

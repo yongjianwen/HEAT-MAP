@@ -39,11 +39,19 @@ class TrackRepository(
         return trackDao.updateTrackEndById(id, end)
     }
 
-    suspend fun delete(track: Track) {
+    /*suspend fun delete(track: Track) {
         return trackDao.delete(track)
+    }*/
+
+    suspend fun delete(id: Long) {
+        return trackDao.delete(id)
     }
 
     suspend fun deleteByTripId(tripId: Long) {
         return trackDao.deleteByTripId(tripId)
+    }
+
+    suspend fun cleanUpTrackNumberByTripId(tripId: Long) {
+        return trackDao.cleanUpTrackNumberByTripId(tripId)
     }
 }

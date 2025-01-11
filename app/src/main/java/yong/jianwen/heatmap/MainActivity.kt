@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.view.Window
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -61,9 +62,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -87,13 +90,15 @@ import yong.jianwen.heatmap.service.LocationService
 import yong.jianwen.heatmap.ui.AppViewModel
 import yong.jianwen.heatmap.ui.BottomBar
 import yong.jianwen.heatmap.ui.CarDialog
-import yong.jianwen.heatmap.ui.DeleteTripDialog
 import yong.jianwen.heatmap.ui.MapDialog
+import yong.jianwen.heatmap.ui.MapScreen
 import yong.jianwen.heatmap.ui.ModeDialog
 import yong.jianwen.heatmap.ui.TripDetailScreen
 import yong.jianwen.heatmap.ui.TripListScreen
 import yong.jianwen.heatmap.ui.component.MyDialog
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
+import yong.jianwen.heatmap.ui.theme.NotoSans
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -151,7 +156,7 @@ fun HeatMapApp(context: Context) {
 //        modifier = Modifier.fillMaxHeight()
 //    ) {
         val appViewModel: AppViewModel = viewModel(factory = AppViewModel.factory)
-        val appUiState by appViewModel.uiState.collectAsState()
+        val uiState by appViewModel.uiState.collectAsState()
 
         val navController = rememberNavController()
 
@@ -281,14 +286,14 @@ fun HeatMapApp(context: Context) {
         ) {
 
             val onBack = {
-                appUiState.currentPage = CurrentPage.HOME
+                uiState.currentPage = CurrentPage.HOME
                 navController.navigateUp()
                 appViewModel.showBottomBar()
             }
 
             val windowSize = calculateWindowSizeClass(context as MainActivity)
 
-            if (appUiState.alertExpanded) {
+            if (uiState.alertExpanded) {
                 MyDialog(
                     title = "Error",
                     onDismissRequest = { appViewModel.hideAlertDialog() },
@@ -303,26 +308,26 @@ fun HeatMapApp(context: Context) {
 
             if (mapExpanded) {
                 MapDialog(
-                    uiState = appUiState,
+                    uiState = uiState,
                     onDismissRequest = { mapExpanded = false },
                     windowSize = windowSize.widthSizeClass
                 )
             }
 
-            if (appUiState.carExpanded) {
+            if (uiState.carExpanded) {
                 CarDialog(
-                    uiState = appUiState,
+                    uiState = uiState,
                     onDismissRequestAtScreen0 = { appViewModel.hideCarDialog() },
                     onAddNewCar = { appViewModel.createCar(it) },
                     onDeleteCar = { appViewModel.deleteCar(it) },
                     onUpdateCar = { appViewModel.updateCar(it) },
                     onItemSelected = {
-                        if (!appUiState.isUpdatingCarOrMode) {
+                        if (!uiState.isUpdatingCarOrMode) {
                             appViewModel.saveCarSelected(it)
                             appViewModel.hideCarDialog()
                         } else {
                             appViewModel.updateTrackCarIdById(
-                                appUiState.updatingTrackId,
+                                uiState.updatingTrackId,
                                 it.id
                             )
                             appViewModel.hideCarDialog()
@@ -331,17 +336,17 @@ fun HeatMapApp(context: Context) {
                 )
             }
 
-            if (appUiState.modeExpanded) {
+            if (uiState.modeExpanded) {
                 ModeDialog(
-                    uiState = appUiState,
+                    uiState = uiState,
                     onDismissRequest = { appViewModel.hideModeDialog() },
                     onItemSelected = {
-                        if (!appUiState.isUpdatingCarOrMode) {
+                        if (!uiState.isUpdatingCarOrMode) {
                             appViewModel.saveMode(it as TripMode)
                             appViewModel.hideModeDialog()
                         } else {
                             appViewModel.updateTrackTypeById(
-                                appUiState.updatingTrackId,
+                                uiState.updatingTrackId,
                                 it as TripMode
                             )
                             appViewModel.hideModeDialog()
@@ -350,20 +355,72 @@ fun HeatMapApp(context: Context) {
                 )
             }
 
-            if (appUiState.deleteTripExpanded) {
-                DeleteTripDialog(
-                    uiState = appUiState,
+            if (uiState.deleteTripExpanded) {
+                /*DeleteDialog(
+                    uiState = uiState,
                     onDismissRequest = { appViewModel.hideDeleteTripDialog() },
                     onButton1Clicked = {
-                        appViewModel.deleteTrip(appUiState.tripIdToDelete)
+                        appViewModel.deleteTrip(uiState.tripIdToDelete)
                         appViewModel.hideDeleteTripDialog()
 
                         if (navController.currentBackStackEntry?.destination?.route == CurrentPage.TRIP_DETAIL.name + "/{tripId}") {
                             navController.popBackStack()
-                            appUiState.currentPage = CurrentPage.HOME
+                            uiState.currentPage = CurrentPage.HOME
                         }
                     }
-                )
+                )*/
+                MyDialog(
+                    title = stringResource(R.string.delete_trip),
+                    onDismissRequest = { appViewModel.hideDeleteTripDialog() },
+                    button1Label = stringResource(R.string.delete),
+                    button1Color = MaterialTheme.colorScheme.error,
+                    onButton1Clicked = {
+                        if (uiState.tripToDelete != null) {
+                            appViewModel.deleteTrip(uiState.tripToDelete!!.id)
+                            appViewModel.hideDeleteTripDialog()
+
+                            if (navController.currentBackStackEntry?.destination?.route == CurrentPage.TRIP_DETAIL.name + "/{tripId}") {
+                                navController.popBackStack()
+                                uiState.currentPage = CurrentPage.HOME
+                            }
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.confirm_delete_trip,
+                            uiState.tripToDelete?.id ?: "-1"
+                        ),
+                        fontFamily = NotoSans,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            if (uiState.deleteTrackExpanded) {
+                MyDialog(
+                    title = stringResource(R.string.delete_track),
+                    onDismissRequest = { appViewModel.hideDeleteTrackDialog() },
+                    button1Label = stringResource(R.string.delete),
+                    button1Color = MaterialTheme.colorScheme.error,
+                    onButton1Clicked = {
+                        if (uiState.trackToDelete != null) {
+                            appViewModel.deleteTrack(uiState.trackToDelete!!)
+                            appViewModel.hideDeleteTrackDialog()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.confirm_delete_track,
+                            uiState.trackToDelete?.id ?: "-1"
+                        ),
+                        fontFamily = NotoSans,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             NavHost(
@@ -390,7 +447,7 @@ fun HeatMapApp(context: Context) {
                     appViewModel.editTrack(false)
 
                     TripListScreen(
-                        uiState = appUiState,
+                        uiState = uiState,
                         windowSize = windowSize.widthSizeClass,
                         onPauseTrip = {
                             appViewModel.pauseTrip()
@@ -399,8 +456,8 @@ fun HeatMapApp(context: Context) {
                         onContinueTrip = {
                             appViewModel.continueTrip(
                                 NewTripInfo(
-                                    car = appUiState.carSelected!!,
-                                    tripMode = appUiState.modeSelected!!,
+                                    car = uiState.carSelected!!,
+                                    tripMode = uiState.modeSelected!!,
                                     tripName = context.getString(R.string.default_trip_name),
                                     trackName = context.getString(R.string.default_track_name),
                                     tripId = it
@@ -429,7 +486,7 @@ fun HeatMapApp(context: Context) {
                                 navController.navigate(
                                     CurrentPage.TRIP_DETAIL.name + "/$it"
                                 )
-                                appUiState.currentPage = CurrentPage.TRIP_DETAIL
+                                uiState.currentPage = CurrentPage.TRIP_DETAIL
                                 appViewModel.hideBottomBar()
                             }
                         },
@@ -441,7 +498,14 @@ fun HeatMapApp(context: Context) {
 //                            mapExpanded = true
                             showDialog = true
                         },
-                        tripLazyListState = tripLazyListState
+                        onMoreItem2Clicked = {
+                            appViewModel.exportData()
+                        },
+                        onMoreItem3Clicked = {
+                            appViewModel.importData()
+                        },
+                        tripLazyListState = tripLazyListState,
+                        /*onSpecialClicked = { appViewModel.resetAllUUIDs() }*/
                     )
                 }
 
@@ -454,6 +518,20 @@ fun HeatMapApp(context: Context) {
                     enterTransition = {
                         return@composable slideIntoContainer(
                             AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    },
+                    exitTransition = {
+                        return@composable slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start,
+                            tween(700)
+                            // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
+                        )
+                    },
+                    popEnterTransition = {
+                        return@composable slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End,
                             tween(700)
                             // spring(Spring.DampingRatioNoBouncy, Spring.StiffnessLow)
                         )
@@ -483,7 +561,7 @@ fun HeatMapApp(context: Context) {
                         )
 
                     TripDetailScreen(
-                        uiState = appUiState,
+                        uiState = uiState,
                         tripWithTracksOrNothing = tripWithTracks,
                         onTrackPointClicked = {
                             val cm =
@@ -498,8 +576,8 @@ fun HeatMapApp(context: Context) {
                         onContinueTrip = {
                             appViewModel.continueTrip(
                                 NewTripInfo(
-                                    car = appUiState.carSelected!!,
-                                    tripMode = appUiState.modeSelected!!,
+                                    car = uiState.carSelected!!,
+                                    tripMode = uiState.modeSelected!!,
                                     tripName = context.getString(R.string.default_trip_name),
                                     trackName = context.getString(R.string.default_track_name),
                                     tripId = it
@@ -527,7 +605,7 @@ fun HeatMapApp(context: Context) {
                         onChooseVehicleClicked = {
                             appViewModel.editTrack(
                                 true,
-                                appUiState.cars.first { car -> car.id == it.carId },
+                                uiState.cars.first { car -> car.id == it.carId },
                                 it.id
                             )
                             appViewModel.showCarDialog()
@@ -559,13 +637,65 @@ fun HeatMapApp(context: Context) {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
+                        },
+                        onDeleteTrackClicked = { appViewModel.showDeleteTrackDialog(it) },
+//                        onDeleteTrack = { appViewModel.deleteTrack(it) }
+                        onMapClicked = {
+                            if (navController.currentBackStackEntry?.destination?.route?.startsWith(
+                                    CurrentPage.TRIP_DETAIL.name
+                                ) == true
+                            ) {
+                                navController.navigate(CurrentPage.MAP.name + "/$it")
+                                uiState.currentPage = CurrentPage.MAP
+                            }
+                        }
+                    )
+                }
+
+                composable(
+                    route = CurrentPage.MAP.name + "/{$tripIdArgument}",
+                    arguments = listOf(
+                        navArgument(tripIdArgument) { type = NavType.StringType }
+                    ),
+                    enterTransition = {
+                        return@composable slideIntoContainer(
+                            AnimatedContentTransitionScope.SlideDirection.Start, tween(700)
+                        )
+                    },
+                    popExitTransition = {
+                        return@composable slideOutOfContainer(
+                            AnimatedContentTransitionScope.SlideDirection.End, tween(700)
+                        )
+                    }
+                ) {
+                    val tripId = it.arguments?.getString(tripIdArgument)?.toLong() ?: error(
+                        "$tripIdArgument cannot be empty"
+                    )
+                    val tripWithTracks by appViewModel.getTripWithTracksById(tripId)
+                        .collectAsState(
+                            TripWithTracks(
+                                trip = Trip(
+                                    id = 0,
+                                    name = "",
+                                    start = "",
+                                    end = ""
+                                ),
+                                tracks = emptyList()
+                            )
+                        )
+
+                    MapScreen(
+                        tripWithTracksOrNothing = tripWithTracks,
+                        onBack = {
+                            uiState.currentPage = CurrentPage.TRIP_DETAIL
+                            navController.navigateUp()
                         }
                     )
                 }
             }
         }
         AnimatedVisibility(
-            visible = appUiState.bottomBarVisible,
+            visible = uiState.bottomBarVisible,
             enter = slideInVertically(
                 initialOffsetY = { -40 }
             ) + expandVertically(
@@ -598,7 +728,7 @@ fun HeatMapApp(context: Context) {
         ) {
             BottomBar(
                 appViewModel = appViewModel,
-                uiState = appUiState,
+                uiState = uiState,
                 navController = navController,
                 context = context,
                 intent = intent,
@@ -622,6 +752,10 @@ fun AnimatedTransitionDialog(
             animateTrigger.value = true
         }
     }*/
+    LocalContext.current.resources.updateConfiguration(
+        LocalConfiguration.current,
+        LocalContext.current.resources.displayMetrics
+    )
     if (animateTrigger)
         Dialog(onDismissRequest = onDismissRequest) {
             val dialogWindow = getDialogWindow()
