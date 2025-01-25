@@ -40,6 +40,9 @@ data class UiState(
     var updatingTrackId: Long = -1,
     var updatingCarOrModeSelected: Selectable? = null,
 
+    var importCarTotal: Int = 0,
+    var importCarDiff: List<Car> = listOf(),
+    var carIdMap: HashMap<Int, Int> = HashMap(),
     var importDataTotal: Int = 0,
     var importDataDiff: List<TripWithTracks> = listOf()
 )

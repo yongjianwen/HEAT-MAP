@@ -464,7 +464,10 @@ fun HeatMapApp(
                     MyDialogText(
                         text = "Import ${uiState.importDataDiff.size}/${uiState.importDataTotal} trips?\n\n" +
                                 uiState.importDataDiff.map { "• " + it.trip.name }
-                                    .joinToString("\n"),
+                                    .joinToString("\n") + "\n" +
+                                "Import ${uiState.importCarDiff.size}/${uiState.importCarTotal} cars?\n\n" +
+                                uiState.importCarDiff.map { "• " + it.getDisplayName() }
+                                    .joinToString("\n") + "\n",
                         modifier = mod
                     )
                 }
@@ -542,8 +545,8 @@ fun HeatMapApp(
                         onMoreDismissed = { appViewModel.hideMoreMenu() },
                         onViewMapClicked = {
                             appViewModel.hideMoreMenu()
-//                            mapExpanded = true
-                            showDialog = true
+                            mapExpanded = true
+//                            showDialog = true
                         },
                         onExportDataClicked = {
 //                            appViewModel.exportData()

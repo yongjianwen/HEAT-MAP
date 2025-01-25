@@ -20,7 +20,7 @@ interface CarDao {
     suspend fun getById(id: Int): Car?
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(car: Car)
+    suspend fun insert(car: Car): Long
 
     @Update
     suspend fun update(car: Car)

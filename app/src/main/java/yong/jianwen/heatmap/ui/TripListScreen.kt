@@ -53,11 +53,16 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import yong.jianwen.heatmap.R
+import yong.jianwen.heatmap.data.entity.Car
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
+import yong.jianwen.heatmap.getCurrentDateTime
 import yong.jianwen.heatmap.local.DataSource
+import yong.jianwen.heatmap.toDateTime
 import yong.jianwen.heatmap.ui.theme.CustomTheme
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.NotoSans
@@ -77,7 +82,7 @@ fun TripListScreen(
     onMoreDismissed: () -> Unit,
     onViewMapClicked: () -> Unit,
     onExportDataClicked: () -> Unit,
-    onImportDataClicked: (List<TripWithTracks>) -> Unit,
+    onImportDataClicked: (JsonObject) -> Unit,
 //    onImportDataConfirmed: () -> Unit,
     tripLazyListState: LazyListState,
     onSpecialClicked: () -> Unit = { }
@@ -127,16 +132,20 @@ fun TripListScreen(
             context.contentResolver.openOutputStream(it)?.let { outputStream ->
                 coroutineScope.launch {
                     withContext(Dispatchers.IO) {
-                        val jsonElements = uiState.allTripsWithTracks.map {
-                            Json.encodeToJsonElement(TripWithTracks.serializer(), it)
+                        val cars = uiState.cars.map { car ->
+                            Json.encodeToJsonElement(Car.serializer(), car)
                         }
-                        val jsonArray = JsonArray(jsonElements)
 
-                        val temp = jsonArray.toString()
-                        val tt = Json.decodeFromString<JsonArray>(temp)
-                        val ttt = Json.decodeFromJsonElement<List<TripWithTracks>>(tt)
+                        val jsonElements = uiState.allTripsWithTracks.map { tripWithTracks ->
+                            Json.encodeToJsonElement(TripWithTracks.serializer(), tripWithTracks)
+                        }
 
-                        outputStream.write(jsonArray.toString().toByteArray())
+                        val t = buildJsonObject {
+                            put("cars", JsonArray(cars))
+                            put("trips", JsonArray(jsonElements))
+                        }
+
+                        outputStream.write(t.toString().toByteArray())
 
                         outputStream.flush()
                         outputStream.close()
@@ -162,11 +171,13 @@ fun TripListScreen(
                     }
                 }
 //                Log.d("TEST", stringBuilder.toString())
-                val t = Json.decodeFromString<JsonArray>(stringBuilder.toString())
-                val temp = Json.decodeFromJsonElement<List<TripWithTracks>>(t)
+                val json = Json.decodeFromString<JsonObject>(stringBuilder.toString())
+                val tripData = json["trips"]
+                val temp = Json.decodeFromJsonElement<List<TripWithTracks>>(tripData!!)
 //                Log.d("TEST", temp.toString())
 
-                onImportDataClicked(temp)
+//                onImportDataClicked(temp)
+                onImportDataClicked(json)
             }
         }
     }
@@ -231,7 +242,7 @@ fun TripListScreen(
                                 type = "application/json"
                                 putExtra(
                                     Intent.EXTRA_TITLE,
-                                    "test-${System.currentTimeMillis()}"
+                                    "heatmap-backup-${toDateTime(getCurrentDateTime(), "yyyyMMdd-HHmmss")}"
                                 )
                             }
                             intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)

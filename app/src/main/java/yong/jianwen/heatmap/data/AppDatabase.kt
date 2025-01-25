@@ -42,7 +42,7 @@ abstract class AppDatabase : RoomDatabase() {
             return INSTANCE ?: synchronized(this) {
                 Room.databaseBuilder(context, AppDatabase::class.java, "heatmap_database")
 //                    .createFromAsset("database/20250125_heatmap_database_v6.db")
-                    .createFromAsset("database/20250125_three_cars_only.db")
+//                    .createFromAsset("database/20250125_three_cars_only.db")
                     /*.fallbackToDestructiveMigration()*/
                     .addMigrations(migration_4_5)
                     .addMigrations(migration_5_6)

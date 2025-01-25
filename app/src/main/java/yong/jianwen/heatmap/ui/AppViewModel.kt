@@ -1,5 +1,6 @@
 package yong.jianwen.heatmap.ui
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -7,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +17,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import yong.jianwen.heatmap.GPXGenerator
 import yong.jianwen.heatmap.HeatMapApplication
 import yong.jianwen.heatmap.data.Selectable
@@ -471,14 +475,66 @@ class AppViewModel(
 //        }
     }
 
-    fun updateImportData(data: List<TripWithTracks>) {
+    fun updateImportData(json: JsonObject) {
+        val carData: MutableList<Car> = mutableListOf()
+        val tripData: MutableList<TripWithTracks> = mutableListOf()
+        val carsStr = "cars"
+        if (json.containsKey(carsStr)) {
+            carData.addAll(Json.decodeFromJsonElement<List<Car>>(json[carsStr]!!))
+        }
+        if ("trips" in json) {
+            tripData.addAll(Json.decodeFromJsonElement<List<TripWithTracks>>(json["trips"]!!))
+        }
+
+        val cars = _uiState.value.cars
+        val carDiffs = carData.filter { c ->
+            cars.none { car ->
+                car.registrationNumber == c.registrationNumber && car.manufacturer == c.manufacturer && car.model == c.model
+            }
+        }
+        val carIdMap = HashMap<Int, Int>()
+        carData.forEach { c ->
+            val firstMatch = cars.firstOrNull { car ->
+                car.registrationNumber == c.registrationNumber && car.manufacturer == c.manufacturer && car.model == c.model
+            }
+            if (firstMatch != null) {
+                carIdMap[c.id] = firstMatch.id
+            }
+        }
+
         val uuids = HashSet(_uiState.value.allTripsWithTracks.map { it.trip.uuid })
-        val diffs = data.filter { !uuids.contains(it.trip.uuid) }
-        _uiState.update { it.copy(importDataTotal = data.size, importDataDiff = diffs) }
+        val diffs = tripData.filter { !uuids.contains(it.trip.uuid) }
+
+        _uiState.update {
+            it.copy(
+                importCarTotal = carData.size,
+                importCarDiff = carDiffs,
+                carIdMap = carIdMap,
+                importDataTotal = tripData.size,
+                importDataDiff = diffs
+            )
+        }
     }
 
     fun importData() {
         viewModelScope.launch {
+            val carIdMap = _uiState.value.carIdMap
+            _uiState.value.importCarDiff.forEach { car ->
+                val carId = carRepository.insert(
+                    Car(
+                        id = 0,
+                        registrationNumber = car.registrationNumber,
+                        manufacturer = car.manufacturer,
+                        model = car.model
+                    )
+                )
+                carIdMap[car.id] = carId
+            }
+
+            _uiState.update { it.copy(carIdMap = carIdMap) }
+
+//            delay(100)
+
             _uiState.value.importDataDiff.forEach { tripWithTracks ->
                 val trip = tripWithTracks.trip
                 val tripId = tripRepository.insert(
@@ -493,6 +549,9 @@ class AppViewModel(
 
                 tripWithTracks.tracks.forEach { trackWithTrackSegments ->
                     val track = trackWithTrackSegments.track
+                    Log.d("TEST", carIdMap.toString())
+                    Log.d("TEST", track.carId.toString())
+                    Log.d("TEST", carIdMap[track.carId].toString())
                     val trackId = trackRepository.insert(
                         Track(
                             id = 0,
@@ -502,7 +561,8 @@ class AppViewModel(
                             number = track.number,
                             start = track.start,
                             end = track.end,
-                            carId = track.carId     // TODO: carId may not be the same across devices
+                            carId = carIdMap[track.carId]
+                                ?: track.carId     // TODO: -1 will never be encountered?
                         )
                     )
 

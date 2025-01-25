@@ -3,9 +3,11 @@ package yong.jianwen.heatmap.data.entity
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import kotlinx.serialization.Serializable
 import yong.jianwen.heatmap.data.Selectable
 
 @Entity(tableName = "car")
+@Serializable
 data class Car(
     @PrimaryKey(autoGenerate = true) override val id: Int,
     @ColumnInfo(name = "registration_number") val registrationNumber: String,

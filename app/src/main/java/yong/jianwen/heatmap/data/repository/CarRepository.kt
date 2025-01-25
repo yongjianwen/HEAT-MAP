@@ -19,8 +19,8 @@ class CarRepository(
         return carDao.getById(id)
     }
 
-    suspend fun insert(car: Car) {
-        return carDao.insert(car)
+    suspend fun insert(car: Car): Int {
+        return carDao.insert(car).toInt()
     }
 
     suspend fun update(car: Car) {
