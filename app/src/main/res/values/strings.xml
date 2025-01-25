@@ -50,4 +50,6 @@
     <string name="trip_name">Trip Name</string>
     <string name="track_name">Track Name</string>
     <string name="car_in_use_error">%1$s is in use.</string>
+    <string name="day_which">(Day %d)&#160;</string>
+    <string name="track_points_how_many">%d Track Points</string>
 </resources>

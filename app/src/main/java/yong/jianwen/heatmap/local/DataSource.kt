@@ -49,7 +49,7 @@ class DataSource {
             id = 1,
             name = "Bahau ABCDEFGH IJKLMNOPQ RSTUVWXYZ Trip",
             start = "2024-12-01T13:05:23",
-            end = "2024-12-01T15:00:13"
+            end = "2024-12-05T15:00:13"
         )
         private val mockTrack1 = Track(
             id = 1,
@@ -58,7 +58,7 @@ class DataSource {
             name = "Morning driving track from Melaka to Genting Highlands via NS Highway",
             number = 1,
             start = "2024-12-01T08:05:23",
-            end = "2024-12-01T08:35:51",
+            end = "2024-12-04T08:35:51",
             carId = 1
         )
         private val mockTrack2 = Track(
@@ -67,8 +67,8 @@ class DataSource {
             type = "Driving",
             name = "Morning seated track",
             number = 2,
-            start = "2024-12-01T08:36:55",
-            end = "2024-12-01T10:00:13",
+            start = "2024-12-05T08:36:55",
+            end = "2024-12-05T10:00:13",
             carId = 1
         )
         private val mockTrackSegment1 = TrackSegment(

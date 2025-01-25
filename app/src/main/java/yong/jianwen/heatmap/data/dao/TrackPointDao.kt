@@ -15,7 +15,7 @@ interface TrackPointDao {
     fun getAll(): Flow<List<TrackPoint>>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
-    suspend fun insert(trackPoint: TrackPoint)
+    suspend fun insert(trackPoint: TrackPoint): Long
 
     @Update
     suspend fun update(trackPoint: TrackPoint)

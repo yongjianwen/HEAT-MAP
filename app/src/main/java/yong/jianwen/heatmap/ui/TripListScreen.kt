@@ -1,8 +1,12 @@
 package yong.jianwen.heatmap.ui
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,18 +42,27 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewLightDark
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.decodeFromJsonElement
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.data.entity.Trip
+import yong.jianwen.heatmap.data.entity.TripWithTracks
 import yong.jianwen.heatmap.local.DataSource
 import yong.jianwen.heatmap.ui.theme.CustomTheme
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.NotoSans
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
 @Composable
 fun TripListScreen(
@@ -62,9 +75,10 @@ fun TripListScreen(
     onDeleteClicked: (trip: Trip) -> Unit,
     onMoreClicked: () -> Unit,
     onMoreDismissed: () -> Unit,
-    onMoreItem1Clicked: () -> Unit,
-    onMoreItem2Clicked: () -> Unit,
-    onMoreItem3Clicked: () -> Unit,
+    onViewMapClicked: () -> Unit,
+    onExportDataClicked: () -> Unit,
+    onImportDataClicked: (List<TripWithTracks>) -> Unit,
+//    onImportDataConfirmed: () -> Unit,
     tripLazyListState: LazyListState,
     onSpecialClicked: () -> Unit = { }
 ) {
@@ -102,6 +116,60 @@ fun TripListScreen(
             scrollState.animateScrollToItem(index = 0)
         }
     }*/
+    val context = LocalContext.current
+
+    val createLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data
+        val uri = data?.data
+        uri?.let {
+            context.contentResolver.openOutputStream(it)?.let { outputStream ->
+                coroutineScope.launch {
+                    withContext(Dispatchers.IO) {
+                        val jsonElements = uiState.allTripsWithTracks.map {
+                            Json.encodeToJsonElement(TripWithTracks.serializer(), it)
+                        }
+                        val jsonArray = JsonArray(jsonElements)
+
+                        val temp = jsonArray.toString()
+                        val tt = Json.decodeFromString<JsonArray>(temp)
+                        val ttt = Json.decodeFromJsonElement<List<TripWithTracks>>(tt)
+
+                        outputStream.write(jsonArray.toString().toByteArray())
+
+                        outputStream.flush()
+                        outputStream.close()
+                    }
+                }
+            }
+        }
+    }
+
+    val readLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val data = result.data
+        val uri = data?.data
+        uri?.let {
+            val stringBuilder = StringBuilder()
+            context.contentResolver.openInputStream(it)?.let { inputStream ->
+                BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                    var line: String? = reader.readLine()
+                    while (line != null) {
+                        stringBuilder.append(line)
+                        line = reader.readLine()
+                    }
+                }
+//                Log.d("TEST", stringBuilder.toString())
+                val t = Json.decodeFromString<JsonArray>(stringBuilder.toString())
+                val temp = Json.decodeFromJsonElement<List<TripWithTracks>>(t)
+//                Log.d("TEST", temp.toString())
+
+                onImportDataClicked(temp)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -138,7 +206,7 @@ fun TripListScreen(
                                 fontFamily = NotoSans
                             )
                         },
-                        onClick = onMoreItem1Clicked
+                        onClick = onViewMapClicked
                     )
                     HorizontalDivider()
                     DropdownMenuItem(
@@ -155,7 +223,22 @@ fun TripListScreen(
                                 fontFamily = NotoSans
                             )
                         },
-                        onClick = onMoreItem2Clicked
+                        onClick = {
+                            onExportDataClicked()
+
+                            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "application/json"
+                                putExtra(
+                                    Intent.EXTRA_TITLE,
+                                    "test-${System.currentTimeMillis()}"
+                                )
+                            }
+                            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            intent.setFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                            intent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                            createLauncher.launch(intent)
+                        }
                     )
                     DropdownMenuItem(
                         leadingIcon = {
@@ -171,10 +254,18 @@ fun TripListScreen(
                                 fontFamily = NotoSans
                             )
                         },
-                        onClick = onMoreItem3Clicked
+                        onClick = {
+                            val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                                addCategory(Intent.CATEGORY_OPENABLE)
+                                type = "application/json"
+                            }
+                            intent.setFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            intent.setFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                            intent.setFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                            readLauncher.launch(intent)
+                        }
                     )
                     HorizontalDivider()
-                    val context = LocalContext.current
                     DropdownMenuItem(
                         leadingIcon = {
                             Icon(
@@ -183,15 +274,22 @@ fun TripListScreen(
                             )
                         },
                         text = {
-                            Text(
-                                text = "HEAT MAP v${
-                                    context.packageManager.getPackageInfo(
-                                        context.packageName,
-                                        0
-                                    ).longVersionCode
-                                }",
-                                fontFamily = NotoSans
-                            )
+                            Row {
+                                Text(
+                                    text = "HEAT MAP",
+                                    fontFamily = NotoSans,
+                                    fontWeight = FontWeight.Black,
+                                )
+                                Text(
+                                    text = " v${
+                                        context.packageManager.getPackageInfo(
+                                            context.packageName,
+                                            0
+                                        ).longVersionCode
+                                    }",
+                                    fontFamily = NotoSans
+                                )
+                            }
                         },
                         onClick = onSpecialClicked
                     )
@@ -203,7 +301,6 @@ fun TripListScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
-//                    paddingValues
                     top = paddingValues.calculateTopPadding(),
                     bottom = paddingValues.calculateBottomPadding()
                 )
@@ -295,9 +392,10 @@ fun TripListCompactPreview() {
             onDeleteClicked = { },
             onMoreClicked = { },
             onMoreDismissed = { },
-            onMoreItem1Clicked = { },
-            onMoreItem2Clicked = { },
-            onMoreItem3Clicked = { },
+            onViewMapClicked = { },
+            onExportDataClicked = { },
+            onImportDataClicked = { },
+//            onImportDataConfirmed = { },
             tripLazyListState = rememberLazyListState()
         )
     }

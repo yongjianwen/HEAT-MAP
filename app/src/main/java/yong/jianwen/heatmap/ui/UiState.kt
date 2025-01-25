@@ -28,6 +28,7 @@ data class UiState(
     var modeExpanded: Boolean = false,
     var deleteTripExpanded: Boolean = false,
     var deleteTrackExpanded: Boolean = false,
+    var importExpanded: Boolean = false,
     var alertExpanded: Boolean = false,
 
 //    var tripIdToDelete: Long = -1,
@@ -37,5 +38,8 @@ data class UiState(
 
     var isUpdatingCarOrMode: Boolean = false,
     var updatingTrackId: Long = -1,
-    var updatingCarOrModeSelected: Selectable? = null
+    var updatingCarOrModeSelected: Selectable? = null,
+
+    var importDataTotal: Int = 0,
+    var importDataDiff: List<TripWithTracks> = listOf()
 )

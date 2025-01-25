@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -18,10 +17,9 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeContent
@@ -30,15 +28,9 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -48,7 +40,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -59,13 +50,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
@@ -73,22 +61,17 @@ import com.mapbox.geojson.Point
 import com.mapbox.maps.CameraBoundsOptions
 import com.mapbox.maps.EdgeInsets
 import com.mapbox.maps.Style
-import com.mapbox.maps.ViewAnnotationAnchor
 import com.mapbox.maps.coroutine.awaitCameraForCoordinates
 import com.mapbox.maps.dsl.cameraOptions
 import com.mapbox.maps.extension.compose.MapEffect
 import com.mapbox.maps.extension.compose.MapboxMap
 import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
-import com.mapbox.maps.extension.compose.annotation.ViewAnnotation
 import com.mapbox.maps.extension.compose.annotation.generated.PointAnnotation
 import com.mapbox.maps.extension.compose.annotation.generated.PolylineAnnotation
 import com.mapbox.maps.extension.compose.annotation.rememberIconImage
 import com.mapbox.maps.extension.compose.rememberMapState
 import com.mapbox.maps.extension.compose.style.GenericStyle
 import com.mapbox.maps.plugin.gestures.generated.GesturesSettings
-import com.mapbox.maps.viewannotation.annotationAnchor
-import com.mapbox.maps.viewannotation.geometry
-import com.mapbox.maps.viewannotation.viewAnnotationOptions
 import kotlinx.coroutines.launch
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.data.entity.Track
@@ -96,9 +79,9 @@ import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
 import yong.jianwen.heatmap.data.helper.UpdateTrack
 import yong.jianwen.heatmap.data.helper.UpdateTrip
-import yong.jianwen.heatmap.formatDisplayStartEndTimes
+import yong.jianwen.heatmap.formatTrackStartEndTimes
+import yong.jianwen.heatmap.formatTripStartEndTimes
 import yong.jianwen.heatmap.local.DataSource
-import yong.jianwen.heatmap.toDateTime
 import yong.jianwen.heatmap.ui.component.FourButtons
 import yong.jianwen.heatmap.ui.component.MyChip
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
@@ -235,30 +218,30 @@ fun TripDetailScreen(
         ) {
             val mapViewportState = rememberMapViewportState() {
                 setCameraOptions {
-                                zoom(12.0)
+                    zoom(12.0)
 //                                center(Point.fromLngLat(102.23142684950145, 2.2432788267098336))
                     pitch(0.0)
                     bearing(0.0)
                 }
             }
-            Box{
+            Box {
                 MapboxMap(
                     mapViewportState = mapViewportState,
                     mapState = rememberMapState {
                         gesturesSettings = GesturesSettings {
                             scrollEnabled = false
-                                    pinchToZoomEnabled = false
+                            pinchToZoomEnabled = false
                             rotateEnabled = false
                             pitchEnabled = false
-                                    doubleTapToZoomInEnabled = false
-                                    doubleTouchToZoomOutEnabled = false
+                            doubleTapToZoomInEnabled = false
+                            doubleTouchToZoomOutEnabled = false
                             quickZoomEnabled = false
-                                    pinchToZoomDecelerationEnabled = false
+                            pinchToZoomDecelerationEnabled = false
                             rotateDecelerationEnabled = false
                             scrollDecelerationEnabled = false
                             increaseRotateThresholdWhenPinchingToZoom = false
                             increasePinchToZoomThresholdWhenRotating = false
-                                    pinchScrollEnabled = false
+                            pinchScrollEnabled = false
                         }
                     },
                     compass = { },
@@ -394,7 +377,8 @@ fun TripDetailScreen(
                 }
                 Surface(
                     color = Color.Transparent,
-                    modifier = Modifier.clickable { onMapClicked(tripWithTracks.trip.id) }
+                    modifier = Modifier
+                        .clickable { onMapClicked(tripWithTracks.trip.id) }
                         .fillMaxWidth()
                         .height(200.dp)
                 ) {
@@ -441,7 +425,7 @@ fun TripDetailScreen(
                             )
                         }
                         Text(
-                            text = formatDisplayStartEndTimes(
+                            text = formatTripStartEndTimes(
                                 tripWithTracks.trip.start,
                                 tripWithTracks.trip.end,
                                 "YYYY/MM/dd h:mma",
@@ -470,169 +454,6 @@ fun TripDetailScreen(
                             modifier = Modifier
                                 .height(dimensionResource(R.dimen.card_medium_content_padding))
                         )
-                        //                    val mapViewportState = rememberMapViewportState() {
-                        //                        /*setCameraOptions {
-                        ////                                zoom(12.0)
-                        ////                                center(Point.fromLngLat(102.23142684950145, 2.2432788267098336))
-                        //                            pitch(0.0)
-                        //                            bearing(0.0)
-                        //                        }*/
-                        //                    }
-                        //                    Surface(
-                        //                        shape = RoundedCornerShape(12.dp)
-                        //                    ) {
-                        //                        MapboxMap(
-                        //                            mapViewportState = mapViewportState,
-                        //                            mapState = rememberMapState {
-                        //                                gesturesSettings = GesturesSettings {
-                        //                                    scrollEnabled = false
-                        ////                                    pinchToZoomEnabled = false
-                        //                                    rotateEnabled = false
-                        //                                    pitchEnabled = false
-                        ////                                    doubleTapToZoomInEnabled = false
-                        ////                                    doubleTouchToZoomOutEnabled = false
-                        //                                    quickZoomEnabled = false
-                        ////                                    pinchToZoomDecelerationEnabled = false
-                        //                                    rotateDecelerationEnabled = false
-                        //                                    scrollDecelerationEnabled = false
-                        //                                    increaseRotateThresholdWhenPinchingToZoom = false
-                        //                                    increasePinchToZoomThresholdWhenRotating = false
-                        ////                                    pinchScrollEnabled = false
-                        //                                }
-                        //                            },
-                        //                            compass = { },
-                        //                            scaleBar = { },
-                        //                            logo = { },
-                        //                            attribution = { },
-                        //                            style = {
-                        //                                if (isSystemInDarkTheme()) {
-                        //                                    GenericStyle(style = Style.DARK)
-                        //                                } else {
-                        //                                    GenericStyle(style = Style.OUTDOORS)
-                        //                                }
-                        //                            },
-                        //                            modifier = Modifier
-                        //                                .fillMaxWidth()
-                        //                                .height((250 * 1.8).dp)
-                        //                        ) {
-                        //                            // Get reference to the raw MapView using MapEffect
-                        //                            if (tripWithTracksOrNothing != null && tripWithTracksOrNothing.tracks.isNotEmpty()) {
-                        //                                MapEffect(Unit) { mapView ->
-                        //                                    // Use mapView to access the Mapbox Maps APIs not in the Compose extension.
-                        //                                    // Changes inside `MapEffect` may conflict with Compose states.
-                        //                                    var northernmost2 = -90.0
-                        //                                    var southernmost2 = 90.0
-                        //                                    var easternmost2 = -180.0
-                        //                                    var westernmost2 = 180.0
-                        //                                    points.forEach { point ->
-                        //                                        northernmost2 =
-                        //                                            Math.max(northernmost2, point.latitude())
-                        //                                        southernmost2 =
-                        //                                            Math.min(southernmost2, point.latitude())
-                        //                                        easternmost2 = Math.max(easternmost2, point.longitude())
-                        //                                        westernmost2 = Math.min(westernmost2, point.longitude())
-                        //                                    }
-                        //                                    val cornerPoints = listOf(
-                        //                                        Point.fromLngLat(westernmost2, southernmost2),
-                        //                                        Point.fromLngLat(westernmost2, northernmost2),
-                        //                                        Point.fromLngLat(easternmost2, northernmost2),
-                        //                                        Point.fromLngLat(easternmost2, southernmost2)
-                        //                                    )
-                        //
-                        //                                    val cameraPosition =
-                        //                                        mapView.mapboxMap.awaitCameraForCoordinates(
-                        //                                            cornerPoints,
-                        //                                            cameraOptions { },
-                        //                                            EdgeInsets(100.0, 100.0, 100.0, 100.0)
-                        //                                        )
-                        //                                    mapViewportState.setCameraOptions(cameraPosition)
-                        //
-                        //                                    val cameraBoundsOptions = CameraBoundsOptions.Builder()
-                        ////                                        .maxZoom(15.0)
-                        ////                                    .bounds(
-                        ////                                        CoordinateBounds(
-                        ////                                            Point.fromLngLat(westernmost1, southernmost1),
-                        ////                                            Point.fromLngLat(easternmost1, northernmost1),
-                        ////                                            false
-                        ////                                        )
-                        ////                                    )
-                        ////                                    .minZoom(2.0) // Set a minimum zoom level
-                        //                                        .build()
-                        //                                    mapView.mapboxMap.setBounds(cameraBoundsOptions)
-                        //                                }
-                        //                            }
-                        //                            val colors =
-                        //                                arrayOf(
-                        //                                    Color.Red,
-                        //                                    Color.Yellow,
-                        //                                    Color.Green,
-                        //                                    Color.Blue,
-                        //                                    Color.Magenta
-                        //                                )
-                        //                            tripWithTracks.tracks.forEachIndexed { index, track ->
-                        //                                PolylineAnnotation(
-                        //                                    points = track.trackSegments
-                        //                                        .flatMap { trackSegment -> trackSegment.trackPoints }
-                        //                                        .map { trackPoint ->
-                        //                                            Point.fromLngLat(
-                        //                                                trackPoint.longitude,
-                        //                                                trackPoint.latitude
-                        //                                            )
-                        //                                        }
-                        //                                ) {
-                        //                                    lineColor = colors[index % 5]
-                        //                                    lineWidth = 2.0
-                        //                                }
-                        //                            }
-                        //
-                        //                            val marker = rememberIconImage(R.drawable.map)
-                        ////                            points.forEach { point ->
-                        //////                                PointAnnotation(
-                        //////                                    point = point
-                        //////                                ) {
-                        //////                                    iconImage = marker
-                        //////                                }
-                        ////                                CircleAnnotation(point = point) {
-                        ////                                    circleColor = Color.Blue
-                        ////                                    circleRadius = 1.0
-                        ////                                }
-                        ////                            }
-                        //
-                        //                            PointAnnotation(
-                        //                                point = Point.fromLngLat(
-                        //                                    longitudeSelected,
-                        //                                    latitudeSelected
-                        //                                )
-                        //                            ) {
-                        //                                iconImage = marker
-                        //                            }
-                        //
-                        //                            /*ViewAnnotation(
-                        //                                options = viewAnnotationOptions {
-                        //                                    geometry(Point.fromLngLat(longitudeSelected, latitudeSelected))
-                        //                                    annotationAnchor {
-                        //                                        anchor(ViewAnnotationAnchor.BOTTOM)
-                        //                                    }
-                        //                                    allowOverlap(false)
-                        //                                }
-                        //                            ) {
-                        //                                Button(
-                        //                                    onClick = {
-                        //                                    },
-                        //                                    colors = ButtonDefaults.buttonColors(
-                        //                                        Color.Red
-                        //                                    ),
-                        //                                ) {
-                        //                                    Text(
-                        //                                        "Click me"
-                        //                                    )
-                        //                                }
-                        //                            }*/
-                        //                        }
-                        //                    }
-                        //                    Spacer(
-                        //                        modifier = Modifier.height(dimensionResource(R.dimen.card_medium_content_padding))
-                        //                    )
                         Row(
                             horizontalArrangement = Arrangement.SpaceAround,
                             modifier = Modifier.fillMaxWidth()
@@ -647,10 +468,10 @@ fun TripDetailScreen(
                                 modifier = Modifier.width(120.dp)
                             )
                         }
-                        Spacer(
-                            modifier = Modifier.height(dimensionResource(R.dimen.card_medium_content_padding))
-                        )
-                        HorizontalDivider()
+//                        Spacer(
+//                            modifier = Modifier.height(dimensionResource(R.dimen.card_medium_content_padding))
+//                        )
+//                        HorizontalDivider()
                     }
                 }
                 itemsIndexed(
@@ -658,52 +479,188 @@ fun TripDetailScreen(
                     //                key = { eachTrack -> eachTrack.track.id }
                 ) { index, track ->
                     Column(
-//                        verticalArrangement = Arrangement.spacedBy(6.dp),
                         modifier = Modifier
+                            .fillMaxWidth()
                             .padding(horizontal = dimensionResource(R.dimen.card_medium_content_padding))
                     ) {
-                        Text(
-                            text = String.format("TRACK %s", track.track.number),
-                            style = MaterialTheme.typography.labelSmall
+                        HorizontalDivider()
+                        Spacer(
+                            modifier = Modifier.height(18.dp)
                         )
                         Row(
-                            horizontalArrangement = Arrangement.SpaceBetween,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Surface(
-                                shape = RoundedCornerShape(dimensionResource(R.dimen.chip_corner_radius)),
+                            Column(
+                                //                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = track.track.name,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier
-                                        .clickable {
-                                            tripOrTrackName = track.track.name
-                                            trackId = track.track.id
-                                            renameExpanded = true
-                                            screen = 1
-                                        }
-                                        .padding(4.dp)
+                                    text = String.format("Track %s", track.track.number)
+                                            + "  •  "
+                                            /*+ formatTrackStartEndTimes(
+                                        tripWithTracks.trip.start,
+                                        tripWithTracks.trip.end,
+                                        track.track.start,
+                                        track.track.end,
+                                        "h:mma",
+                                        stringResource(R.string.day_which)
+                                    )
+                                            + "  •  "*/
+                                            + String.format(
+                                        stringResource(R.string.track_points_how_many),
+                                        track.trackSegments.flatMap { trackSegment -> trackSegment.trackPoints }.size
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall
                                 )
-                            }
-                            Spacer(
-                                modifier = Modifier.weight(1f)
-                            )
-                            /*AnimatedVisibility(
-                                visible = !toolVisible
-                            ) {
-                                IconButton(
-                                    onClick = { sectionExpanded = !sectionExpanded }
+                                Text(
+                                    text = formatTrackStartEndTimes(
+                                        tripWithTracks.trip.start,
+                                        tripWithTracks.trip.end,
+                                        track.track.start,
+                                        track.track.end,
+                                        "h:mma",
+                                        stringResource(R.string.day_which)
+                                    ),
+                                    style = labelMediumSmall
+//                                    style = MaterialTheme.typography.labelSmall
+                                )
+                                Surface(
+                                    shape = RoundedCornerShape(dimensionResource(R.dimen.chip_corner_radius)),
                                 ) {
-                                    Icon(
-                                        imageVector = if (sectionExpanded)
-                                            Icons.Filled.KeyboardArrowUp
-                                        else
-                                            Icons.Filled.KeyboardArrowDown,
-                                        contentDescription = stringResource(R.string.expand_track)
+                                    Text(
+                                        text = track.track.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier
+                                            .clickable {
+                                                tripOrTrackName = track.track.name
+                                                trackId = track.track.id
+                                                renameExpanded = true
+                                                screen = 1
+                                            }
+                                            .padding(4.dp)
                                     )
                                 }
-                            }*/
+                                /*Row(
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Spacer(
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }*/
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
+                                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
+                                    modifier = Modifier
+                                        .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
+                                ) {
+                                    MyChip(
+                                        label1 = track.track.type,
+                                        onLabel1Clicked = { onChooseModeClicked(track.track) },
+                                        label2 = uiState.cars.first { car -> car.id == track.track.carId }
+                                            .getDisplayName(),
+                                        onLabel2Clicked = { onChooseVehicleClicked(track.track) }
+                                    )
+                                }
+
+                                //                    if (sectionExpanded) {
+                                ////                        LazyColumn(
+                                ////                            modifier = Modifier.heightIn(0.dp, 1000.dp)
+                                ////                        ) {
+                                ////                            items(
+                                ////                                items = track.trackSegments,
+                                ////                                key = { eachTrackSegment -> eachTrackSegment.trackSegment.id }
+                                ////                            ) { trackSegment ->
+                                //                        track.trackSegments.reversed().forEach { trackSegment ->
+                                //                            Text(
+                                //                                text = "Track Segment ${trackSegment.trackSegment.number}",
+                                //                                style = MaterialTheme.typography.titleSmall
+                                //                            )
+                                //                            Column(
+                                //                                verticalArrangement = Arrangement.spacedBy(3.dp),
+                                //                                modifier = Modifier
+                                //                                    .heightIn(0.dp, 500.dp)
+                                //                                    .verticalScroll(rememberScrollState())
+                                //                            ) {
+                                //                                //                            items(
+                                //                                //                                items = trackSegment.trackPoints,
+                                //                                //                                key = { eachTrackPoint -> eachTrackPoint.id }
+                                //                                //                            ) { trackPoint ->
+                                //                                trackSegment.trackPoints.reversed().forEach { trackPoint ->
+                                //                                    val latitude = String.format("%.5f", trackPoint.latitude)
+                                //                                    val longitude = String.format("%.5f", trackPoint.longitude)
+                                //
+                                //                                    Column(
+                                //                                        modifier = Modifier
+                                //                                            .border(1.dp, Color.LightGray, RectangleShape)
+                                //                                            .clickable {
+                                //                                                onTrackPointClicked(
+                                //                                                    String.format(
+                                //                                                        "%s, %s",
+                                //                                                        latitude,
+                                //                                                        longitude
+                                //                                                    )
+                                //                                                )
+                                //                                                latitudeSelected = latitude.toDouble()
+                                //                                                longitudeSelected = longitude.toDouble()
+                                //                                            }
+                                //                                            .fillMaxWidth()
+                                //                                            .padding(8.dp)
+                                //                                    ) {
+                                //                                        Row(
+                                //                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                //                                            modifier = Modifier
+                                //                                                .fillMaxWidth()
+                                //                                        ) {
+                                //                                            Text(
+                                //                                                text = "Track Point ID ${trackPoint.id}",
+                                //                                                style = MaterialTheme.typography.labelSmall
+                                //                                            )
+                                //                                            Text(
+                                //                                                text = toDateTime(
+                                //                                                    trackPoint.time,
+                                //                                                    "YYYY/MM/dd hh:mm:ss a"
+                                //                                                ),
+                                //                                                style = MaterialTheme.typography.labelSmall
+                                //                                            )
+                                //                                        }
+                                //                                        Row(
+                                //                                            horizontalArrangement = Arrangement.SpaceAround,
+                                //                                            verticalAlignment = Alignment.CenterVertically,
+                                //                                            modifier = Modifier
+                                //                                                .fillMaxWidth()
+                                //                                                .height(30.dp)
+                                //                                        ) {
+                                //                                            Text(
+                                //                                                text = latitude,
+                                //                                                style = MaterialTheme.typography.titleMedium,
+                                //                                                textAlign = TextAlign.Center,
+                                //                                                modifier = Modifier
+                                //                                                    .weight(1f)
+                                //                                            )
+                                //                                            VerticalDivider(
+                                //                                                modifier = Modifier
+                                //                                                    .fillMaxHeight()
+                                //                                                    .width(1.dp)
+                                //                                            )
+                                //                                            Text(
+                                //                                                text = longitude,
+                                //                                                style = MaterialTheme.typography.titleMedium,
+                                //                                                textAlign = TextAlign.Center,
+                                //                                                modifier = Modifier
+                                //                                                    .weight(1f)
+                                //                                            )
+                                //                                        }
+                                //                                    }
+                                //                                }
+                                //                            }
+                                //                            Spacer(
+                                //                                modifier = Modifier
+                                //                                    .height(6.dp)
+                                //                            )
+                                //                        }
+                                //                    }
+                            }
                             AnimatedVisibility(
                                 visible = toolVisible
                             ) {
@@ -720,127 +677,9 @@ fun TripDetailScreen(
                                 }
                             }
                         }
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                            verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.chip_separation)),
-                            modifier = Modifier
-                                .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
-                        ) {
-                            MyChip(
-                                label1 = track.track.type,
-                                onLabel1Clicked = { onChooseModeClicked(track.track) },
-                                label2 = uiState.cars.first { car -> car.id == track.track.carId }
-                                    .getDisplayName(),
-                                onLabel2Clicked = { onChooseVehicleClicked(track.track) }
-                            )
-                        }
-
-                        //                    if (sectionExpanded) {
-                        ////                        LazyColumn(
-                        ////                            modifier = Modifier.heightIn(0.dp, 1000.dp)
-                        ////                        ) {
-                        ////                            items(
-                        ////                                items = track.trackSegments,
-                        ////                                key = { eachTrackSegment -> eachTrackSegment.trackSegment.id }
-                        ////                            ) { trackSegment ->
-                        //                        track.trackSegments.reversed().forEach { trackSegment ->
-                        //                            Text(
-                        //                                text = "Track Segment ${trackSegment.trackSegment.number}",
-                        //                                style = MaterialTheme.typography.titleSmall
-                        //                            )
-                        //                            Column(
-                        //                                verticalArrangement = Arrangement.spacedBy(3.dp),
-                        //                                modifier = Modifier
-                        //                                    .heightIn(0.dp, 500.dp)
-                        //                                    .verticalScroll(rememberScrollState())
-                        //                            ) {
-                        //                                //                            items(
-                        //                                //                                items = trackSegment.trackPoints,
-                        //                                //                                key = { eachTrackPoint -> eachTrackPoint.id }
-                        //                                //                            ) { trackPoint ->
-                        //                                trackSegment.trackPoints.reversed().forEach { trackPoint ->
-                        //                                    val latitude = String.format("%.5f", trackPoint.latitude)
-                        //                                    val longitude = String.format("%.5f", trackPoint.longitude)
-                        //
-                        //                                    Column(
-                        //                                        modifier = Modifier
-                        //                                            .border(1.dp, Color.LightGray, RectangleShape)
-                        //                                            .clickable {
-                        //                                                onTrackPointClicked(
-                        //                                                    String.format(
-                        //                                                        "%s, %s",
-                        //                                                        latitude,
-                        //                                                        longitude
-                        //                                                    )
-                        //                                                )
-                        //                                                latitudeSelected = latitude.toDouble()
-                        //                                                longitudeSelected = longitude.toDouble()
-                        //                                            }
-                        //                                            .fillMaxWidth()
-                        //                                            .padding(8.dp)
-                        //                                    ) {
-                        //                                        Row(
-                        //                                            horizontalArrangement = Arrangement.SpaceBetween,
-                        //                                            modifier = Modifier
-                        //                                                .fillMaxWidth()
-                        //                                        ) {
-                        //                                            Text(
-                        //                                                text = "Track Point ID ${trackPoint.id}",
-                        //                                                style = MaterialTheme.typography.labelSmall
-                        //                                            )
-                        //                                            Text(
-                        //                                                text = toDateTime(
-                        //                                                    trackPoint.time,
-                        //                                                    "YYYY/MM/dd hh:mm:ss a"
-                        //                                                ),
-                        //                                                style = MaterialTheme.typography.labelSmall
-                        //                                            )
-                        //                                        }
-                        //                                        Row(
-                        //                                            horizontalArrangement = Arrangement.SpaceAround,
-                        //                                            verticalAlignment = Alignment.CenterVertically,
-                        //                                            modifier = Modifier
-                        //                                                .fillMaxWidth()
-                        //                                                .height(30.dp)
-                        //                                        ) {
-                        //                                            Text(
-                        //                                                text = latitude,
-                        //                                                style = MaterialTheme.typography.titleMedium,
-                        //                                                textAlign = TextAlign.Center,
-                        //                                                modifier = Modifier
-                        //                                                    .weight(1f)
-                        //                                            )
-                        //                                            VerticalDivider(
-                        //                                                modifier = Modifier
-                        //                                                    .fillMaxHeight()
-                        //                                                    .width(1.dp)
-                        //                                            )
-                        //                                            Text(
-                        //                                                text = longitude,
-                        //                                                style = MaterialTheme.typography.titleMedium,
-                        //                                                textAlign = TextAlign.Center,
-                        //                                                modifier = Modifier
-                        //                                                    .weight(1f)
-                        //                                            )
-                        //                                        }
-                        //                                    }
-                        //                                }
-                        //                            }
-                        //                            Spacer(
-                        //                                modifier = Modifier
-                        //                                    .height(6.dp)
-                        //                            )
-                        //                        }
-                        //                    }
                         Spacer(
                             modifier = Modifier.height(18.dp)
                         )
-                        if (index != tripWithTracks.tracks.size - 1) {
-                            HorizontalDivider()
-                            Spacer(
-                                modifier = Modifier.height(18.dp)
-                            )
-                        }
                     }
                 }
             }

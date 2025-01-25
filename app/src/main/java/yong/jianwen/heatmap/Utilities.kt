@@ -14,8 +14,10 @@ import yong.jianwen.heatmap.data.TripMode
 import yong.jianwen.heatmap.data.entity.Car
 import java.text.ParseException
 import java.text.SimpleDateFormat
+import java.time.temporal.ChronoUnit
 import java.util.Calendar
 import java.util.Date
+import java.util.concurrent.TimeUnit
 
 fun generateTripName(baseName: String): String {
     // TODO: to auto suggest trip name when trip is ended by user
@@ -47,7 +49,7 @@ fun getCurrentDateTime(): String {
 }
 
 @SuppressLint("SimpleDateFormat")
-fun formatDisplayStartEndTimes(
+fun formatTripStartEndTimes(
     start: String,
     end: String,
     outputPattern: String,
@@ -87,6 +89,135 @@ fun formatDisplayStartEndTimes(
     } else {
         "--"
     }
+}
+
+@SuppressLint("SimpleDateFormat")
+fun formatTrackStartEndTimes(
+    tripStart: String,
+    tripEnd: String,
+    start: String,
+    end: String,
+    outputPattern: String,
+    dayString: String
+): String {
+    val inputFormatter = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss")
+    val tripStartTime: Date? = try {
+        inputFormatter.parse(tripStart)!!
+    } catch (e: ParseException) {
+        null
+    }
+    val tripEndTime: Date? = try {
+        inputFormatter.parse(tripEnd)!!
+    } catch (e: ParseException) {
+        null
+    }
+    val startTime: Date? = try {
+        inputFormatter.parse(start)!!
+    } catch (e: ParseException) {
+        null
+    }
+    val endTime: Date? = try {
+        inputFormatter.parse(end)!!
+    } catch (e: ParseException) {
+        null
+    }
+
+    val outputFormatter = SimpleDateFormat(outputPattern)
+    // start
+    // start != tripStart -> Day 1
+    // start == tripStart -> today -> ''
+    // start == tripStart -> !tripEnd && not today -> Day 1
+    // end
+    // end date != start date -> Day 2
+    // end date == start date -> ''
+    // !end
+    return if (startTime != null) {
+        val startCal = Calendar.getInstance()
+        startCal.time = startTime
+
+        if (tripStartTime != null) {
+            val tripStartCal = Calendar.getInstance()
+            tripStartCal.time = tripStartTime
+
+            val day = isDaysAfter(startCal, tripStartCal)
+            if (// track start date != trip start date
+                day != 0
+                // track start date == trip start date, but trip has not ended, and it is not today
+                || (tripEndTime == null && isDaysAfter(startCal, Calendar.getInstance()) < 0)
+            ) {
+                String.format(dayString, day + 1)
+            } else if (tripEndTime != null) {
+                // trip has ended, and trip end date != trip start date
+                val tripEndCal = Calendar.getInstance()
+                tripEndCal.time = tripEndTime
+                if (isDaysAfter(tripEndCal, tripStartCal) > 0) {
+                    String.format(dayString, 1)
+                } else {
+                    ""
+                }
+            } else {
+                ""
+            }
+        } else {
+            ""
+        } + outputFormatter.format(startTime) + if (endTime != null) {
+            val endCal = Calendar.getInstance()
+            endCal.time = endTime
+
+            val day = isDaysAfter(endCal, startCal)
+            " - " + if (day != 0 && tripStartTime != null) {
+                val tripStartCal = Calendar.getInstance()
+                tripStartCal.time = tripStartTime
+                String.format(dayString, isDaysAfter(endCal, tripStartCal) + 1)
+            } else {
+                ""
+            } + outputFormatter.format(endTime)
+        } else {
+            ""
+        }
+    } else {
+        "--"
+    }
+
+//    val outputFormatter = SimpleDateFormat(outputPattern)
+    /*return if (startTime != null && endTime != null) {
+        val startCal = Calendar.getInstance()
+        val endCal = Calendar.getInstance()
+        startCal.time = startTime
+        endCal.time = endTime
+
+        outputFormatter.format(startTime) + " - " +
+                if (startCal.get(Calendar.YEAR) == endCal.get(Calendar.YEAR)
+                    && startCal.get(Calendar.MONTH) == endCal.get(Calendar.MONTH)
+                    && startCal.get(Calendar.DAY_OF_MONTH) == endCal.get(Calendar.DAY_OF_MONTH)
+                ) {
+                    val outputFormatterSameDay = SimpleDateFormat(outputPatternSameDay)
+                    outputFormatterSameDay.format(endTime)
+                } else {
+                    outputFormatter.format(endTime)
+                }
+    } else if (startTime != null) {
+        outputFormatter.format(startTime)
+    } else {
+        "--"
+    }*/
+}
+
+fun isDaysAfter(cal1: Calendar, cal2: Calendar): Int {
+    cal1.set(Calendar.HOUR_OF_DAY, 0)
+    cal1.set(Calendar.MINUTE, 0)
+    cal1.set(Calendar.SECOND, 0)
+    cal1.set(Calendar.MILLISECOND, 0)
+
+    cal2.set(Calendar.HOUR_OF_DAY, 0)
+    cal2.set(Calendar.MINUTE, 0)
+    cal2.set(Calendar.SECOND, 0)
+    cal2.set(Calendar.MILLISECOND, 0)
+
+    return ChronoUnit.DAYS.between(cal2.toInstant(), cal1.toInstant()).toInt()
+//    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR)
+//            && cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH)
+//            && cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
 }
 
 @SuppressLint("SimpleDateFormat")

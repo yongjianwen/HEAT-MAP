@@ -11,7 +11,7 @@ class TrackPointRepository(
         return trackPointDao.getAll()
     }
 
-    suspend fun insert(trackPoint: TrackPoint) {
+    suspend fun insert(trackPoint: TrackPoint): Long {
         return trackPointDao.insert(trackPoint)
     }
 

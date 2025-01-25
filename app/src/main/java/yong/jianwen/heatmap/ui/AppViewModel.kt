@@ -1,6 +1,5 @@
 package yong.jianwen.heatmap.ui
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
@@ -22,6 +21,7 @@ import yong.jianwen.heatmap.data.Selectable
 import yong.jianwen.heatmap.data.TripMode
 import yong.jianwen.heatmap.data.entity.Car
 import yong.jianwen.heatmap.data.entity.Track
+import yong.jianwen.heatmap.data.entity.TrackPoint
 import yong.jianwen.heatmap.data.entity.TrackSegment
 import yong.jianwen.heatmap.data.entity.Trip
 import yong.jianwen.heatmap.data.entity.TripWithTracks
@@ -412,6 +412,14 @@ class AppViewModel(
         _uiState.update { it.copy(trackToDelete = null, deleteTrackExpanded = false) }
     }
 
+    fun showImportDialog() {
+        _uiState.update { it.copy(importExpanded = true) }
+    }
+
+    fun hideImportDialog() {
+        _uiState.update { it.copy(importExpanded = false) }
+    }
+
     fun hideAlertDialog() {
         _uiState.update { it.copy(alertExpanded = false) }
     }
@@ -430,37 +438,101 @@ class AppViewModel(
     }
 
     //region Export and import data
-    fun exportData() {
-        viewModelScope.launch {
-            /*var trips: List<Trip> = listOf()
-            var tracks: List<Track> = listOf()
-            var trackSegments: List<TrackSegment> = listOf()
-            var trackPoints: List<TrackPoint> = listOf()
+    fun exportData(): String {
+//        viewModelScope.launch {
+        /*var trips: List<Trip> = listOf()
+        var tracks: List<Track> = listOf()
+        var trackSegments: List<TrackSegment> = listOf()
+        var trackPoints: List<TrackPoint> = listOf()
 
-            uiState.value.allTripsWithTracks.forEach { trip ->
-                trips = trips.plus(trip.trip)
-                trip.tracks.forEach { track ->
-                    tracks = tracks.plus(track.track)
-                    track.trackSegments.forEach { trackSegment ->
-                        trackSegments = trackSegments.plus(trackSegment.trackSegment)
-                        trackPoints = trackPoints.plus(trackSegment.trackPoints)
+        uiState.value.allTripsWithTracks.forEach { trip ->
+            trips = trips.plus(trip.trip)
+            trip.tracks.forEach { track ->
+                tracks = tracks.plus(track.track)
+                track.trackSegments.forEach { trackSegment ->
+                    trackSegments = trackSegments.plus(trackSegment.trackSegment)
+                    trackPoints = trackPoints.plus(trackSegment.trackPoints)
+                }
+            }
+        }
+        Log.d(
+            "TEST",
+            "trip: $trips"
+        )*/
+
+        val jsonElements = uiState.value.allTripsWithTracks.map {
+            Json.encodeToJsonElement(TripWithTracks.serializer(), it)
+        }
+        val jsonArray = JsonArray(jsonElements)
+        // TODO: check whether UUID will be changed when updating trip fields
+
+
+        return jsonArray.toString()
+//        }
+    }
+
+    fun updateImportData(data: List<TripWithTracks>) {
+        val uuids = HashSet(_uiState.value.allTripsWithTracks.map { it.trip.uuid })
+        val diffs = data.filter { !uuids.contains(it.trip.uuid) }
+        _uiState.update { it.copy(importDataTotal = data.size, importDataDiff = diffs) }
+    }
+
+    fun importData() {
+        viewModelScope.launch {
+            _uiState.value.importDataDiff.forEach { tripWithTracks ->
+                val trip = tripWithTracks.trip
+                val tripId = tripRepository.insert(
+                    Trip(
+                        id = 0,
+                        name = trip.name,
+                        start = trip.start,
+                        end = trip.end,
+                        uuid = trip.uuid
+                    )
+                )
+
+                tripWithTracks.tracks.forEach { trackWithTrackSegments ->
+                    val track = trackWithTrackSegments.track
+                    val trackId = trackRepository.insert(
+                        Track(
+                            id = 0,
+                            tripId = tripId,
+                            type = track.type,
+                            name = track.name,
+                            number = track.number,
+                            start = track.start,
+                            end = track.end,
+                            carId = track.carId     // TODO: carId may not be the same across devices
+                        )
+                    )
+
+                    trackWithTrackSegments.trackSegments.forEach { trackSegmentWithTrackPoints ->
+                        val trackSegment = trackSegmentWithTrackPoints.trackSegment
+                        val trackSegmentId = trackSegmentRepository.insert(
+                            TrackSegment(
+                                id = 0,
+                                trackId = trackId,
+                                number = trackSegment.number
+                            )
+                        )
+
+                        trackSegmentWithTrackPoints.trackPoints.forEach { trackPoint ->
+                            trackPointRepository.insert(
+                                TrackPoint(
+                                    id = 0,
+                                    trackSegmentId = trackSegmentId,
+                                    latitude = trackPoint.latitude,
+                                    longitude = trackPoint.longitude,
+                                    elevation = trackPoint.elevation,
+                                    time = trackPoint.time
+                                )
+                            )
+                        }
                     }
                 }
             }
-            Log.d(
-                "TEST",
-                "trip: $trips"
-            )*/
-
-            val jsonElements = uiState.value.allTripsWithTracks.map {
-                Json.encodeToJsonElement(TripWithTracks.serializer(), it)
-            }
-            val jsonArray = JsonArray(jsonElements)
-            // TODO: check whether UUID will be changed when updating trip fields
         }
     }
-
-    fun importData() {}
 
     fun resetAllUUIDs() {
         viewModelScope.launch {

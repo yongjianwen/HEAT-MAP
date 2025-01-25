@@ -31,7 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import yong.jianwen.heatmap.R
 import yong.jianwen.heatmap.data.entity.Trip
-import yong.jianwen.heatmap.formatDisplayStartEndTimes
+import yong.jianwen.heatmap.formatTripStartEndTimes
 import yong.jianwen.heatmap.local.DataSource
 import yong.jianwen.heatmap.ui.component.FourButtons
 import yong.jianwen.heatmap.ui.component.MyChip
@@ -138,7 +138,7 @@ fun Content(
             .padding(bottom = dimensionResource(R.dimen.card_inner_vertical_padding))
     )
     Text(
-        text = formatDisplayStartEndTimes(
+        text = formatTripStartEndTimes(
             trip.start,
             trip.end,
             "YYYY/MM/dd h:mma",

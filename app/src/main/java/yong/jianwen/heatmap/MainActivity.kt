@@ -7,7 +7,6 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
 import android.view.Window
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -96,9 +95,9 @@ import yong.jianwen.heatmap.ui.ModeDialog
 import yong.jianwen.heatmap.ui.TripDetailScreen
 import yong.jianwen.heatmap.ui.TripListScreen
 import yong.jianwen.heatmap.ui.component.MyDialog
+import yong.jianwen.heatmap.ui.component.MyDialogText
 import yong.jianwen.heatmap.ui.theme.HeatMapTheme
 import yong.jianwen.heatmap.ui.theme.NotoSans
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
 
@@ -122,13 +121,23 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    /*private val createDocument = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        Log.d("TEST", it.toString())
+        val data = it.data
+        val uri = data?.data
+        uri?.let {
+
+        }
+    }*/
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             HeatMapTheme {
                 HeatMapApp(
-                    context = this
+                    context = this,
+//                    createDocument = createDocument
                 )
             }
         }
@@ -147,7 +156,10 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 @Composable
-fun HeatMapApp(context: Context) {
+fun HeatMapApp(
+    context: Context,
+//    createDocument: ActivityResultLauncher<String>
+) {
     Box(
 //        modifier = Modifier.padding(0.dp)
     ) {
@@ -385,16 +397,23 @@ fun HeatMapApp(context: Context) {
                             }
                         }
                     }
-                ) {
-                    Text(
+                ) { mod ->
+                    MyDialogText(
                         text = stringResource(
                             R.string.confirm_delete_trip,
                             uiState.tripToDelete?.id ?: "-1"
                         ),
-                        fontFamily = NotoSans,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = mod
                     )
+//                    Text(
+//                        text = stringResource(
+//                            R.string.confirm_delete_trip,
+//                            uiState.tripToDelete?.id ?: "-1"
+//                        ),
+//                        fontFamily = NotoSans,
+//                        textAlign = TextAlign.Center,
+//                        modifier = Modifier.fillMaxWidth()
+//                    )
                 }
             }
 
@@ -410,15 +429,43 @@ fun HeatMapApp(context: Context) {
                             appViewModel.hideDeleteTrackDialog()
                         }
                     }
-                ) {
-                    Text(
+                ) { mod ->
+                    MyDialogText(
                         text = stringResource(
                             R.string.confirm_delete_track,
                             uiState.trackToDelete?.id ?: "-1"
                         ),
-                        fontFamily = NotoSans,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = mod
+                    )
+//                    Text(
+//                        text = stringResource(
+//                            R.string.confirm_delete_track,
+//                            uiState.trackToDelete?.id ?: "-1"
+//                        ),
+//                        fontFamily = NotoSans,
+//                        textAlign = TextAlign.Center,
+//                        modifier = Modifier.fillMaxWidth()
+//                    )
+                }
+            }
+
+            if (uiState.importExpanded) {
+                MyDialog(
+                    title = "Import Data",
+                    onDismissRequest = { appViewModel.hideImportDialog() },
+                    button1Label = "Import",
+                    onButton1Clicked = {
+                        coroutineScope.launch {
+                            appViewModel.importData()
+                        }
+                        appViewModel.hideImportDialog()
+                    }
+                ) { mod ->
+                    MyDialogText(
+                        text = "Import ${uiState.importDataDiff.size}/${uiState.importDataTotal} trips?\n\n" +
+                                uiState.importDataDiff.map { "• " + it.trip.name }
+                                    .joinToString("\n"),
+                        modifier = mod
                     )
                 }
             }
@@ -493,17 +540,22 @@ fun HeatMapApp(context: Context) {
                         onDeleteClicked = { appViewModel.showDeleteTripDialog(it) },
                         onMoreClicked = { appViewModel.showMoreMenu() },
                         onMoreDismissed = { appViewModel.hideMoreMenu() },
-                        onMoreItem1Clicked = {
+                        onViewMapClicked = {
                             appViewModel.hideMoreMenu()
 //                            mapExpanded = true
                             showDialog = true
                         },
-                        onMoreItem2Clicked = {
-                            appViewModel.exportData()
+                        onExportDataClicked = {
+//                            appViewModel.exportData()
+//                            createDocument.launch("20250113 test")
                         },
-                        onMoreItem3Clicked = {
-                            appViewModel.importData()
+                        onImportDataClicked = {
+                            appViewModel.updateImportData(it)
+                            appViewModel.showImportDialog()
                         },
+//                        onImportDataConfirmed = {
+//                            //
+//                        },
                         tripLazyListState = tripLazyListState,
                         /*onSpecialClicked = { appViewModel.resetAllUUIDs() }*/
                     )
